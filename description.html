@@ -1,0 +1,2302 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CO3101 — Predicting Daily Ranking of Returns of Equities</title>
+    <style>
+        /* ===== RESET & BASE ===== */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; font-size: 16px; }
+        body {
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+            background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+            color: #e0e0e0;
+            line-height: 1.75;
+            min-height: 100vh;
+        }
+
+        /* ===== SIDEBAR NAV ===== */
+        .sidebar {
+            position: fixed;
+            top: 0; left: 0;
+            width: 280px;
+            height: 100vh;
+            background: rgba(15, 12, 41, 0.95);
+            border-right: 1px solid rgba(255,255,255,0.08);
+            padding: 24px 16px;
+            overflow-y: auto;
+            z-index: 100;
+            backdrop-filter: blur(12px);
+        }
+        .sidebar h3 {
+            color: #a78bfa;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin: 20px 0 8px;
+        }
+        .sidebar h3:first-child { margin-top: 0; }
+        .sidebar a {
+            display: block;
+            color: #c0c0c0;
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            transition: all 0.2s;
+            margin-bottom: 2px;
+        }
+        .sidebar a:hover {
+            background: rgba(167, 139, 250, 0.15);
+            color: #a78bfa;
+        }
+        .sidebar .logo {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #a78bfa;
+            padding: 0 12px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 16px;
+        }
+        .sidebar .logo span { color: #60a5fa; }
+
+        /* ===== MAIN CONTENT ===== */
+        .main {
+            margin-left: 280px;
+            padding: 48px 64px 96px;
+            max-width: 1100px;
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            text-align: center;
+            padding: 64px 0 48px;
+        }
+        .hero h1 {
+            font-size: 2.5rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 16px;
+        }
+        .hero .subtitle {
+            font-size: 1.15rem;
+            color: #9ca3af;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+        .hero .badge {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 6px 18px;
+            background: rgba(167, 139, 250, 0.15);
+            border: 1px solid rgba(167, 139, 250, 0.3);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            color: #a78bfa;
+            letter-spacing: 1px;
+        }
+
+        /* ===== SECTIONS ===== */
+        section {
+            margin-bottom: 56px;
+        }
+        section h2 {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #a78bfa;
+            margin-bottom: 20px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid rgba(167, 139, 250, 0.25);
+        }
+        section h3 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #60a5fa;
+            margin: 28px 0 12px;
+        }
+        section h4 {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: #34d399;
+            margin: 20px 0 8px;
+        }
+        p { margin-bottom: 14px; }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin-bottom: 20px;
+            transition: border-color 0.3s;
+        }
+        .card:hover { border-color: rgba(167, 139, 250, 0.3); }
+        .card.highlight {
+            border-left: 4px solid #a78bfa;
+            background: rgba(167, 139, 250, 0.06);
+        }
+        .card.warn {
+            border-left: 4px solid #f59e0b;
+            background: rgba(245, 158, 11, 0.06);
+        }
+        .card.danger {
+            border-left: 4px solid #ef4444;
+            background: rgba(239, 68, 68, 0.06);
+        }
+        .card.success {
+            border-left: 4px solid #34d399;
+            background: rgba(52, 211, 153, 0.06);
+        }
+        .card .card-title {
+            font-weight: 700;
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+        .card.highlight .card-title { color: #a78bfa; }
+        .card.warn .card-title { color: #f59e0b; }
+        .card.danger .card-title { color: #ef4444; }
+        .card.success .card-title { color: #34d399; }
+
+        /* ===== GLOSSARY ===== */
+        .glossary-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .glossary-item {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            padding: 20px;
+        }
+        .glossary-item .term {
+            font-weight: 700;
+            color: #a78bfa;
+            font-size: 0.95rem;
+            margin-bottom: 6px;
+        }
+        .glossary-item .term-en {
+            color: #60a5fa;
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+        .glossary-item .def {
+            font-size: 0.9rem;
+            color: #c0c0c0;
+        }
+
+        /* ===== CODE / FORMULA ===== */
+        .formula-box {
+            background: rgba(0,0,0,0.35);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 10px;
+            padding: 20px 24px;
+            margin: 16px 0;
+            font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+            font-size: 0.9rem;
+            color: #93c5fd;
+            overflow-x: auto;
+            line-height: 1.9;
+        }
+        .formula-box .comment { color: #6b7280; }
+        .formula-box .keyword { color: #a78bfa; }
+        .formula-box .var { color: #34d399; }
+
+        code {
+            background: rgba(167, 139, 250, 0.12);
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: 'Cascadia Code', 'Fira Code', monospace;
+            font-size: 0.88em;
+            color: #c4b5fd;
+        }
+
+        /* ===== FLOW DIAGRAM ===== */
+        .flow {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            margin: 24px 0;
+            flex-wrap: wrap;
+        }
+        .flow-step {
+            background: rgba(167, 139, 250, 0.12);
+            border: 1px solid rgba(167, 139, 250, 0.25);
+            border-radius: 10px;
+            padding: 14px 20px;
+            text-align: center;
+            font-size: 0.85rem;
+            min-width: 140px;
+        }
+        .flow-step .step-num {
+            display: block;
+            font-size: 0.7rem;
+            color: #a78bfa;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .flow-arrow {
+            font-size: 1.5rem;
+            color: #a78bfa;
+            padding: 0 8px;
+        }
+
+        /* ===== TABLE ===== */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 0.9rem;
+        }
+        th {
+            background: rgba(167, 139, 250, 0.12);
+            color: #a78bfa;
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(167, 139, 250, 0.2);
+        }
+        td {
+            padding: 10px 16px;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            color: #c0c0c0;
+        }
+        tr:hover td { background: rgba(255,255,255,0.02); }
+
+        /* ===== LISTS ===== */
+        ul, ol {
+            margin: 10px 0 14px 20px;
+        }
+        li { margin-bottom: 6px; }
+
+        /* ===== LINKS ===== */
+        a { color: #60a5fa; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 900px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 24px; }
+            .glossary-grid { grid-template-columns: 1fr; }
+            .hero h1 { font-size: 1.8rem; }
+        }
+
+        /* ===== SCROLL INDICATOR ===== */
+        .scroll-top {
+            position: fixed;
+            bottom: 32px;
+            right: 32px;
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(167, 139, 250, 0.8);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            box-shadow: 0 4px 16px rgba(167, 139, 250, 0.3);
+        }
+
+        /* ===== TIMELINE ===== */
+        .timeline {
+            position: relative;
+            padding-left: 32px;
+            margin: 20px 0;
+        }
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: rgba(167, 139, 250, 0.25);
+        }
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -28px;
+            top: 8px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #a78bfa;
+            border: 2px solid #302b63;
+        }
+        .timeline-item .tl-title {
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 4px;
+        }
+        .timeline-item .tl-desc {
+            font-size: 0.9rem;
+            color: #9ca3af;
+        }
+
+        /* ===== EMOJI ICON ===== */
+        .icon { font-style: normal; margin-right: 6px; }
+
+        /* ===== DIVIDER ===== */
+        hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.08);
+            margin: 40px 0;
+        }
+
+        /* ===== ACCORDION ===== */
+        details {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 10px;
+            margin-bottom: 12px;
+            padding: 0;
+        }
+        details[open] {
+            border-color: rgba(167, 139, 250, 0.2);
+        }
+        summary {
+            padding: 14px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #a78bfa;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        summary::before {
+            content: '▶';
+            font-size: 0.7rem;
+            transition: transform 0.2s;
+        }
+        details[open] summary::before {
+            transform: rotate(90deg);
+        }
+        details .detail-content {
+            padding: 0 20px 16px;
+            color: #c0c0c0;
+            font-size: 0.92rem;
+        }
+    </style>
+</head>
+<body>
+
+<!-- ============ SIDEBAR ============ -->
+<nav class="sidebar">
+    <div class="logo">📊 CO3101 <span>ĐA-TTNT</span></div>
+
+    <h3>Tổng quan</h3>
+    <a href="#hero">🏠 Giới thiệu</a>
+    <a href="#boi-canh">🌍 Bối cảnh dự án</a>
+    <a href="#bai-toan">🎯 Bài toán là gì?</a>
+
+    <h3>Kiến thức nền</h3>
+    <a href="#thuat-ngu">📖 Thuật ngữ cốt lõi</a>
+    <a href="#alpha">🧬 Alpha là gì?</a>
+    <a href="#long-short">⚖️ Long-Short Balanced</a>
+    <a href="#5day">🔄 Ví dụ: 5-Day Reversal</a>
+    <a href="#pnl">💰 PnL & Metrics</a>
+
+    <h3>Yêu cầu kỹ thuật</h3>
+    <a href="#market">📋 Market & Universe</a>
+    <a href="#data">💾 Data & Splitting</a>
+    <a href="#russell">🏛️ Russell 1000</a>
+    <a href="#target">🎯 Target & Output</a>
+    <a href="#performance">📈 Performance Metrics</a>
+
+    <h3>Mở rộng</h3>
+    <a href="#advanced">🚀 Scope nâng cao</a>
+    <a href="#architecture">🏗️ Kiến trúc hệ thống</a>
+    <a href="#ai-ml-quant">🤖 AI & Machine Learning</a>
+    <a href="#worldquant">🏆 WorldQuant IQC</a>
+    <a href="#roadmap">🗺️ Lộ trình thực hiện</a>
+    <a href="#tai-lieu">📚 Tài liệu tham khảo</a>
+</nav>
+
+<!-- ============ MAIN ============ -->
+<div class="main">
+
+    <!-- HERO -->
+    <div class="hero" id="hero">
+        <h1>Predicting Daily Ranking of<br>Returns of Equities</h1>
+        <p class="subtitle">
+            Đồ án tổng hợp — Trí Tuệ Nhân Tạo (CO3101)<br>
+            Xây dựng hệ thống dự đoán lợi nhuận cổ phiếu hàng ngày<br>
+            bằng các chiến lược giao dịch tự động (automated alpha strategies)
+        </p>
+        <span class="badge">HỌC KỲ 1 — NĂM HỌC 2026-2027</span>
+    </div>
+
+    <hr>
+
+    <!-- ===================== PHẦN 1: BỐI CẢNH ===================== -->
+    <section id="boi-canh">
+        <h2><em class="icon">🌍</em> Bối cảnh dự án</h2>
+
+        <div class="card highlight">
+            <div class="card-title">Dự án này mô phỏng cách các quỹ Hedge Fund lớn hoạt động</div>
+            <p>
+                Trên thế giới, các quỹ đầu tư lớn (Hedge Fund) như
+                <strong>Renaissance Technologies</strong>, <strong>Two Sigma</strong>,
+                <strong>Citadel</strong>, <strong>D.E. Shaw</strong>, và đặc biệt
+                <strong>WorldQuant</strong> đều sử dụng <strong>hàng triệu chiến lược giao dịch tự động</strong>
+                (automated strategies) để kiếm lợi nhuận trên thị trường chứng khoán.
+            </p>
+            <p>
+                Thay vì một nhà đầu tư ngồi phân tích biểu đồ và quyết định mua/bán,
+                các quỹ này viết <strong>thuật toán (algorithms)</strong> để tự động:
+            </p>
+            <ul>
+                <li>Thu thập dữ liệu giá cổ phiếu</li>
+                <li>Tính toán tín hiệu (signal / alpha) cho biết nên mua hay bán cổ phiếu nào</li>
+                <li>Tạo danh mục đầu tư (portfolio) hàng ngày</li>
+                <li>Đo lường hiệu quả (performance) và cải thiện liên tục</li>
+            </ul>
+        </div>
+
+        <div class="card">
+            <div class="card-title" style="color:#60a5fa;">Tại sao đề tài này quan trọng?</div>
+            <p>
+                Ngành <strong>Quantitative Finance</strong> (Tài chính định lượng) là một trong những ngành
+                có thu nhập cao nhất thế giới, kết hợp giữa <strong>Toán học</strong>, <strong>Lập trình</strong>,
+                và <strong>Tài chính</strong>. Đồ án này giúp bạn:
+            </p>
+            <ul>
+                <li>Hiểu cách thị trường chứng khoán hoạt động từ góc nhìn thuật toán</li>
+                <li>Áp dụng kiến thức AI/ML vào bài toán thực tế có giá trị thương mại cực cao</li>
+                <li>Có thể thi cuộc thi <strong>WorldQuant IQC</strong> với chính kiến thức từ đồ án này</li>
+                <li>Xây dựng portfolio cá nhân ấn tượng cho career trong Quant Finance</li>
+            </ul>
+        </div>
+
+        <h3>Hedge Fund là gì?</h3>
+        <p>
+            <strong>Hedge Fund</strong> (Quỹ phòng hộ) là loại quỹ đầu tư sử dụng các chiến lược
+            phức tạp để kiếm lợi nhuận <strong>bất kể thị trường đi lên hay đi xuống</strong>.
+            Từ "hedge" nghĩa là "phòng hộ" — tức là họ không chỉ đặt cược vào một hướng
+            mà <strong>cân bằng rủi ro</strong> bằng cách vừa mua (long) vừa bán khống (short) cổ phiếu.
+        </p>
+        <p>
+            Các quỹ Quantitative Hedge Fund (quỹ định lượng) sử dụng máy tính và thuật toán
+            để ra quyết định đầu tư, thay vì con người. Họ chạy <strong>hàng triệu chiến lược nhỏ</strong>,
+            mỗi chiến lược cho một tín hiệu yếu, rồi <strong>kết hợp (combine)</strong> tất cả lại
+            thành một tín hiệu mạnh và ổn định hơn.
+        </p>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 2: BÀI TOÁN ===================== -->
+    <section id="bai-toan">
+        <h2><em class="icon">🎯</em> Bài toán là gì?</h2>
+
+        <div class="card highlight">
+            <div class="card-title">Tóm tắt bài toán trong 1 câu</div>
+            <p style="font-size:1.1rem;">
+                <strong>Xây dựng thuật toán tự động</strong> để mỗi ngày tính ra
+                <strong>nên mua bao nhiêu</strong> (long) và <strong>bán bao nhiêu</strong> (short)
+                cho mỗi cổ phiếu trong tập ~1000 cổ phiếu lớn nhất nước Mỹ (Russell 1000),
+                sao cho tổng vị thế mua = tổng vị thế bán (long-short balanced),
+                và đo lường hiệu quả bằng lợi nhuận (return) và tỷ lệ Sharpe.
+            </p>
+        </div>
+
+        <h3>Phân tích chi tiết tên đề tài</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Từ khóa</th>
+                    <th>Nghĩa</th>
+                    <th>Giải thích thêm</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Predicting</strong></td>
+                    <td>Dự đoán</td>
+                    <td>Dùng dữ liệu quá khứ để dự đoán tương lai. Trong bối cảnh này, ta dự đoán cổ phiếu nào sẽ tăng, cổ phiếu nào sẽ giảm vào ngày mai.</td>
+                </tr>
+                <tr>
+                    <td><strong>Daily</strong></td>
+                    <td>Hàng ngày</td>
+                    <td>Mỗi ngày giao dịch, thuật toán phải tính ra một danh mục mới. Đây là tần suất cao — mỗi năm có khoảng 252 ngày giao dịch.</td>
+                </tr>
+                <tr>
+                    <td><strong>Ranking</strong></td>
+                    <td>Xếp hạng</td>
+                    <td>Không cần dự đoán chính xác giá cổ phiếu tăng bao nhiêu %, chỉ cần xếp hạng: cổ phiếu nào sẽ tốt hơn cổ phiếu nào (relative performance).</td>
+                </tr>
+                <tr>
+                    <td><strong>Returns</strong></td>
+                    <td>Lợi nhuận</td>
+                    <td>Phần trăm thay đổi giá. VD: giá hôm qua 100$, hôm nay 102$ → return = +2%.</td>
+                </tr>
+                <tr>
+                    <td><strong>Equities</strong></td>
+                    <td>Cổ phiếu</td>
+                    <td>Cổ phiếu (cổ phần) của các công ty niêm yết trên sàn chứng khoán Mỹ.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Quy trình tổng quan của bài toán</h3>
+        <div class="flow">
+            <div class="flow-step">
+                <span class="step-num">Bước 1</span>
+                Thu thập dữ liệu giá<br>từ Yahoo Finance
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <span class="step-num">Bước 2</span>
+                Tính tín hiệu Alpha<br>cho mỗi cổ phiếu
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <span class="step-num">Bước 3</span>
+                Demean → tạo<br>Long-Short positions
+            </div>
+            <div class="flow-arrow">→</div>
+            <div class="flow-step">
+                <span class="step-num">Bước 4</span>
+                Tính PnL, Return,<br>Sharpe ratio
+            </div>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 3: THUẬT NGỮ ===================== -->
+    <section id="thuat-ngu">
+        <h2><em class="icon">📖</em> Thuật ngữ cốt lõi — Giải thích chi tiết</h2>
+
+        <p style="color:#9ca3af; margin-bottom:24px;">
+            Dưới đây là tất cả các thuật ngữ quan trọng bạn cần biết.
+            Mỗi thuật ngữ được giải thích bằng ngôn ngữ đơn giản nhất có thể.
+        </p>
+
+        <div class="glossary-grid">
+            <div class="glossary-item">
+                <div class="term">Equity <span class="term-en">(Cổ phiếu)</span></div>
+                <div class="def">
+                    Một phần sở hữu của công ty. Khi bạn mua cổ phiếu Apple (AAPL), bạn sở hữu
+                    một phần nhỏ của Apple. Giá cổ phiếu thay đổi hàng ngày theo cung cầu thị trường.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Return <span class="term-en">(Lợi nhuận)</span></div>
+                <div class="def">
+                    Phần trăm thay đổi giá giữa 2 thời điểm.<br>
+                    <code>return = (giá_mới − giá_cũ) / giá_cũ</code><br>
+                    VD: Giá từ $100 lên $105 → return = +5%.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Universe <span class="term-en">(Tập vũ trụ cổ phiếu)</span></div>
+                <div class="def">
+                    Tập hợp tất cả cổ phiếu mà thuật toán của bạn sẽ xem xét.
+                    Trong đồ án này, universe = <strong>Russell 1000</strong> (~1000 cổ phiếu lớn nhất nước Mỹ).
+                    Bạn không cần quan tâm đến hàng ngàn cổ phiếu nhỏ khác.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Alpha (α) <span class="term-en">(Tín hiệu giao dịch)</span></div>
+                <div class="def">
+                    Một công thức/thuật toán dùng dữ liệu để tính ra <strong>một con số</strong> cho mỗi cổ phiếu,
+                    thể hiện mức độ nên mua (+) hay nên bán (−) cổ phiếu đó. Alpha dương = nên mua, alpha âm = nên bán.
+                    <em>Xem chi tiết ở phần Alpha bên dưới.</em>
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Long <span class="term-en">(Mua)</span></div>
+                <div class="def">
+                    Mua cổ phiếu với kỳ vọng giá sẽ <strong>tăng</strong>.
+                    VD: Mua AAPL ở $150, giá lên $160 → lãi $10.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Short <span class="term-en">(Bán khống)</span></div>
+                <div class="def">
+                    Bán cổ phiếu mình chưa có (mượn để bán) với kỳ vọng giá sẽ <strong>giảm</strong>.
+                    VD: Short TSLA ở $200, giá xuống $180 → lãi $20.
+                    Nếu giá tăng thì bạn lỗ!
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Long-Short Balanced <span class="term-en">(Cân bằng mua-bán)</span></div>
+                <div class="def">
+                    Tổng tiền mua (long) bằng tổng tiền bán (short). Ý nghĩa: bạn <strong>không bị ảnh hưởng</strong>
+                    bởi thị trường đi lên hay đi xuống chung (market neutral). Chỉ lãi/lỗ khi dự đoán đúng/sai
+                    cổ phiếu nào tốt hơn cổ phiếu nào.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Demean <span class="term-en">(Trừ trung bình)</span></div>
+                <div class="def">
+                    Trừ mỗi giá trị alpha cho trung bình của tất cả alpha. Sau khi demean, tổng tất cả alpha = 0,
+                    đảm bảo long-short balanced. Công thức: <code>α_i = α_i − mean(α)</code>
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">PnL <span class="term-en">(Profit and Loss — Lãi/Lỗ)</span></div>
+                <div class="def">
+                    Tổng tiền lãi hoặc lỗ mà chiến lược tạo ra. PnL dương = chiến lược kiếm được tiền.
+                    PnL âm = chiến lược bị lỗ.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Annualized Return <span class="term-en">(Lợi nhuận hàng năm)</span></div>
+                <div class="def">
+                    Lợi nhuận tính trên cơ sở 1 năm. VD: nếu trong 6 tháng bạn lãi 5%,
+                    annualized return ≈ 10%. Giúp so sánh công bằng giữa các khoảng thời gian khác nhau.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Volatility <span class="term-en">(Độ biến động)</span></div>
+                <div class="def">
+                    Mức độ dao động của lợi nhuận. Volatility cao = lợi nhuận nhảy lên xuống nhiều (rủi ro cao).
+                    Volatility thấp = lợi nhuận ổn định (rủi ro thấp). Tính bằng độ lệch chuẩn (standard deviation) của return hàng ngày.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Sharpe Ratio <span class="term-en">(Tỷ lệ Sharpe)</span></div>
+                <div class="def">
+                    <code>Sharpe = Return / Volatility</code><br>
+                    Đo lường <strong>lợi nhuận trên mỗi đơn vị rủi ro</strong>. Sharpe > 1 là tốt, > 2 là rất tốt.
+                    Sharpe cao = lãi tốt và ổn định. Đây là <strong>chỉ số quan trọng nhất</strong> trong đồ án.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">In-Sample / Out-of-Sample <span class="term-en">(Trong/Ngoài mẫu)</span></div>
+                <div class="def">
+                    <strong>In-sample</strong>: dữ liệu dùng để xây dựng và tối ưu chiến lược (trước 01/01/2024).<br>
+                    <strong>Out-of-sample</strong>: dữ liệu dùng để kiểm tra (sau 01/01/2024).
+                    <strong>TUYỆT ĐỐI KHÔNG</strong> được xem hiệu quả trên out-of-sample khi đang xây dựng chiến lược!
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Point-in-Time Data <span class="term-en">(Dữ liệu tại thời điểm)</span></div>
+                <div class="def">
+                    Dữ liệu mà phản ánh đúng thông tin có sẵn <strong>tại thời điểm đó</strong>. VD: danh sách Russell 1000
+                    năm 2020 phải dùng đúng danh sách của năm 2020, không phải danh sách hiện tại.
+                    Nếu không làm đúng sẽ bị <strong>survivorship bias</strong> (thiên lệch sống sót).
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Survivorship Bias <span class="term-en">(Thiên lệch sống sót)</span></div>
+                <div class="def">
+                    Lỗi khi chỉ nhìn vào các công ty còn tồn tại đến hôm nay, bỏ qua những công ty đã phá sản
+                    hoặc bị xóa khỏi index. Điều này làm kết quả backtest quá lạc quan so với thực tế.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">Backtest <span class="term-en">(Kiểm tra ngược)</span></div>
+                <div class="def">
+                    Chạy chiến lược trên dữ liệu quá khứ để xem nó hoạt động thế nào.
+                    VD: áp dụng thuật toán trên dữ liệu 2014-2023 để xem nó lãi hay lỗ bao nhiêu.
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 4: ALPHA ===================== -->
+    <section id="alpha">
+        <h2><em class="icon">🧬</em> Alpha là gì? — Trái tim của đồ án</h2>
+
+        <p>
+            <strong>Alpha</strong> là khái niệm quan trọng nhất trong toàn bộ đồ án. Hiểu được alpha là hiểu được
+            bản chất của bài toán.
+        </p>
+
+        <div class="card highlight">
+            <div class="card-title">Định nghĩa đơn giản</div>
+            <p>
+                Alpha là <strong>một công thức toán học</strong> nhận vào dữ liệu thị trường (giá, volume, v.v.)
+                và xuất ra <strong>một con số cho mỗi cổ phiếu</strong>. Con số này cho biết bạn nên
+                <strong>mua bao nhiêu</strong> (số dương) hoặc <strong>bán bao nhiêu</strong> (số âm) cổ phiếu đó.
+            </p>
+        </div>
+
+        <h3>Ví dụ trực quan</h3>
+        <p>Giả sử universe có 5 cổ phiếu. Alpha tính ra:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Cổ phiếu</th>
+                    <th>Alpha (trước demean)</th>
+                    <th>Alpha (sau demean)</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>AAPL</td>
+                    <td>+0.05</td>
+                    <td>+0.03</td>
+                    <td style="color:#34d399;">📈 Mua (Long)</td>
+                </tr>
+                <tr>
+                    <td>MSFT</td>
+                    <td>+0.03</td>
+                    <td>+0.01</td>
+                    <td style="color:#34d399;">📈 Mua (Long)</td>
+                </tr>
+                <tr>
+                    <td>GOOGL</td>
+                    <td>+0.02</td>
+                    <td>0.00</td>
+                    <td style="color:#9ca3af;">— Không làm gì</td>
+                </tr>
+                <tr>
+                    <td>TSLA</td>
+                    <td>−0.01</td>
+                    <td>−0.03</td>
+                    <td style="color:#ef4444;">📉 Bán (Short)</td>
+                </tr>
+                <tr>
+                    <td>META</td>
+                    <td>+0.01</td>
+                    <td>−0.01</td>
+                    <td style="color:#ef4444;">📉 Bán (Short)</td>
+                </tr>
+                <tr style="font-weight:700;">
+                    <td>Tổng</td>
+                    <td>+0.10</td>
+                    <td style="color:#a78bfa;">0.00 ✓</td>
+                    <td>Long = Short (Balanced!)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <p>
+            Ở cột <strong>"sau demean"</strong>, tổng = 0 → danh mục là <strong>long-short balanced</strong>.
+            Bạn mua AAPL & MSFT, bán khống TSLA & META. Nếu dự đoán đúng (AAPL, MSFT tăng giá hơn TSLA, META),
+            bạn sẽ lãi — <strong>bất kể thị trường đi lên hay đi xuống</strong>.
+        </p>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 5: LONG-SHORT ===================== -->
+    <section id="long-short">
+        <h2><em class="icon">⚖️</em> Long-Short Balanced — Giải thích chi tiết</h2>
+
+        <h3>Tại sao phải Long-Short Balanced?</h3>
+        <div class="card">
+            <p><strong>Hãy tưởng tượng 2 kịch bản:</strong></p>
+            <p>
+                <strong>Kịch bản 1 — Chỉ Long (chỉ mua):</strong><br>
+                Bạn mua AAPL, MSFT, GOOGL. Nếu toàn bộ thị trường sập 10%, bạn lỗ 10% dù dự đoán đúng
+                AAPL là cổ phiếu tốt nhất. Bạn chịu rủi ro thị trường (market risk).
+            </p>
+            <p>
+                <strong>Kịch bản 2 — Long-Short Balanced:</strong><br>
+                Bạn mua AAPL (long) và bán TSLA (short). Nếu thị trường sập 10%:
+            </p>
+            <ul>
+                <li>AAPL giảm 8% → lỗ 8% trên phần long</li>
+                <li>TSLA giảm 12% → lãi 12% trên phần short</li>
+                <li>Kết quả: lãi +4%! Vì bạn dự đoán đúng AAPL tốt hơn TSLA</li>
+            </ul>
+            <p>
+                → Long-short balanced giúp bạn <strong>loại bỏ rủi ro thị trường</strong> và chỉ tập trung
+                vào khả năng dự đoán <strong>cổ phiếu nào tốt hơn cổ phiếu nào</strong>.
+            </p>
+        </div>
+
+        <h3>Điều kiện toán học</h3>
+        <div class="formula-box">
+<span class="comment">// Cho n cổ phiếu trong universe, alpha vector sau khi demean:</span>
+α = [α₁, α₂, ..., αₙ]
+
+<span class="comment">// Điều kiện long-short balanced:</span>
+<span class="keyword">Σ</span> αᵢ = 0   (tổng tất cả alpha bằng 0)
+    <span class="comment">i=1..n</span>
+
+<span class="comment">// Nghĩa là:</span>
+<span class="var">Tổng positions dương (long)</span> = <span class="var">|Tổng positions âm (short)|</span>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 6: 5-DAY REVERSAL ===================== -->
+    <section id="5day">
+        <h2><em class="icon">🔄</em> Ví dụ kinh điển: 5-Day Reversal (Đảo chiều 5 ngày)</h2>
+
+        <div class="card success">
+            <div class="card-title">Ý tưởng đằng sau 5-Day Reversal</div>
+            <p>
+                Đây là chiến lược dựa trên <strong>Mean Reversion</strong> (Quay về trung bình) — một hiện tượng
+                phổ biến trong thị trường tài chính. Ý tưởng:
+            </p>
+            <ul>
+                <li>Cổ phiếu đã <strong>giảm nhiều</strong> trong 5 ngày qua → có xu hướng <strong>tăng trở lại</strong> (reversal) → <strong>nên mua</strong></li>
+                <li>Cổ phiếu đã <strong>tăng nhiều</strong> trong 5 ngày qua → có xu hướng <strong>giảm trở lại</strong> (reversal) → <strong>nên bán</strong></li>
+            </ul>
+            <p>Tức là: <em>"Cổ phiếu nào giảm quá nhiều thì sẽ nảy lên, tăng quá nhiều thì sẽ rơi xuống."</em></p>
+        </div>
+
+        <h3>Công thức từng bước</h3>
+        <div class="formula-box">
+<span class="comment">// Ký hiệu:</span>
+<span class="comment">//   price[i, -k] = giá đóng cửa của cổ phiếu i, k ngày trước</span>
+<span class="comment">//   price[i, -1] = giá hôm qua (gần nhất)</span>
+<span class="comment">//   price[i, -5] = giá 5 ngày trước</span>
+
+<span class="comment">// ═══════════════════════════════════════════════</span>
+<span class="comment">// BƯỚC 1: Tính alpha thô cho mỗi cổ phiếu i</span>
+<span class="comment">// ═══════════════════════════════════════════════</span>
+
+<span class="keyword">αᵢ</span> = ( price[i, -5] − price[i, -1] ) / 5
+
+<span class="comment">// Nếu giá 5 ngày trước > giá hôm qua → αᵢ dương → cổ phiếu đã giảm → nên mua</span>
+<span class="comment">// Nếu giá 5 ngày trước < giá hôm qua → αᵢ âm → cổ phiếu đã tăng → nên bán</span>
+
+<span class="comment">// ═══════════════════════════════════════════════</span>
+<span class="comment">// BƯỚC 2: Tính trung bình (mean) của tất cả alpha</span>
+<span class="comment">// ═══════════════════════════════════════════════</span>
+
+<span class="keyword">mean</span> = (1/n) × Σ αᵢ    <span class="comment">(trung bình cộng)</span>
+
+<span class="comment">// ═══════════════════════════════════════════════</span>
+<span class="comment">// BƯỚC 3: Demean — trừ trung bình để cân bằng</span>
+<span class="comment">// ═══════════════════════════════════════════════</span>
+
+<span class="keyword">αᵢ</span> = αᵢ − mean
+
+<span class="comment">// SAU BƯỚC NÀY: Σ αᵢ = 0  →  LONG-SHORT BALANCED ✓</span>
+        </div>
+
+        <h3>Ví dụ số cụ thể</h3>
+        <p>Giả sử có 3 cổ phiếu:</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Cổ phiếu</th>
+                    <th>Giá 5 ngày trước</th>
+                    <th>Giá hôm qua</th>
+                    <th>α thô</th>
+                    <th>α sau demean</th>
+                    <th>Hành động</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>AAPL</td>
+                    <td>$155</td>
+                    <td>$150</td>
+                    <td>(155−150)/5 = <strong>+1.0</strong></td>
+                    <td>1.0 − 0.33 = <strong>+0.67</strong></td>
+                    <td style="color:#34d399;">Mua (giảm → sẽ nảy lên)</td>
+                </tr>
+                <tr>
+                    <td>MSFT</td>
+                    <td>$310</td>
+                    <td>$308</td>
+                    <td>(310−308)/5 = <strong>+0.4</strong></td>
+                    <td>0.4 − 0.33 = <strong>+0.07</strong></td>
+                    <td style="color:#34d399;">Mua nhẹ</td>
+                </tr>
+                <tr>
+                    <td>TSLA</td>
+                    <td>$195</td>
+                    <td>$198</td>
+                    <td>(195−198)/5 = <strong>−0.4</strong></td>
+                    <td>−0.4 − 0.33 = <strong>−0.73</strong></td>
+                    <td style="color:#ef4444;">Bán (tăng → sẽ rơi xuống)</td>
+                </tr>
+                <tr style="font-weight:700;">
+                    <td colspan="3">Trung bình (mean)</td>
+                    <td>+0.33</td>
+                    <td style="color:#a78bfa;">Tổng = 0.01 ≈ 0 ✓</td>
+                    <td></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 7: PnL & METRICS ===================== -->
+    <section id="pnl">
+        <h2><em class="icon">💰</em> PnL & Performance Metrics</h2>
+
+        <h3>PnL — Profit and Loss (Lãi/Lỗ)</h3>
+        <div class="card">
+            <p>PnL cho biết chiến lược kiếm được bao nhiêu tiền. Cách tính:</p>
+            <div class="formula-box">
+<span class="comment">// PnL hàng ngày = tổng (vị thế × lợi nhuận) cho tất cả cổ phiếu</span>
+
+<span class="keyword">daily_pnl</span> = Σ αᵢ × returnᵢ
+              i=1..n
+
+<span class="comment">// Trong đó:</span>
+<span class="comment">//   αᵢ      = position (vị thế) của cổ phiếu i (đã demean)</span>
+<span class="comment">//   returnᵢ = % thay đổi giá cổ phiếu i ngày hôm đó</span>
+
+<span class="comment">// VD: bạn long AAPL (α = +0.5) và AAPL tăng 2%</span>
+<span class="comment">//     → đóng góp = 0.5 × 0.02 = +0.01 (lãi)</span>
+<span class="comment">//     bạn short TSLA (α = -0.5) và TSLA tăng 1%</span>
+<span class="comment">//     → đóng góp = -0.5 × 0.01 = -0.005 (lỗ)</span>
+            </div>
+        </div>
+
+        <h3>Annualized Return (Lợi nhuận hàng năm)</h3>
+        <div class="card">
+            <div class="formula-box">
+<span class="comment">// Bước 1: Tính trung bình daily return</span>
+<span class="keyword">avg_daily_return</span> = mean(daily_pnl)
+
+<span class="comment">// Bước 2: Quy đổi ra năm (1 năm ≈ 252 ngày giao dịch)</span>
+<span class="keyword">annualized_return</span> = avg_daily_return × 252
+            </div>
+        </div>
+
+        <h3>Sharpe Ratio — Chỉ số quan trọng nhất</h3>
+        <div class="card highlight">
+            <div class="card-title">Sharpe = Return / Volatility</div>
+            <div class="formula-box">
+<span class="comment">// Sharpe đo lường: "mỗi đơn vị rủi ro nhận được bao nhiêu lợi nhuận?"</span>
+
+<span class="keyword">Sharpe</span> = Annualized Return / Annualized Volatility
+
+<span class="comment">// Trong đó:</span>
+<span class="keyword">Annualized Volatility</span> = std(daily_pnl) × √252
+            </div>
+            <table>
+                <thead>
+                    <tr><th>Sharpe Ratio</th><th>Đánh giá</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>< 0</td><td style="color:#ef4444;">Chiến lược bị lỗ</td></tr>
+                    <tr><td>0 — 0.5</td><td style="color:#f59e0b;">Rất yếu</td></tr>
+                    <tr><td>0.5 — 1.0</td><td style="color:#fbbf24;">Tạm được</td></tr>
+                    <tr><td>1.0 — 2.0</td><td style="color:#34d399;">Tốt ✓</td></tr>
+                    <tr><td>2.0 — 3.0</td><td style="color:#22d3ee;">Rất tốt ✓✓</td></tr>
+                    <tr><td>> 3.0</td><td style="color:#a78bfa;">Xuất sắc (hiếm) ✓✓✓</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 8: MARKET & UNIVERSE ===================== -->
+    <section id="market">
+        <h2><em class="icon">📋</em> Yêu cầu #1: Market & Universe</h2>
+
+        <div class="card">
+            <table>
+                <tbody>
+                    <tr>
+                        <td><strong>Market (Thị trường)</strong></td>
+                        <td><strong>US</strong> — Thị trường chứng khoán Mỹ (NYSE, NASDAQ)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Universe (Tập cổ phiếu)</strong></td>
+                        <td><strong>Russell 1000</strong> — ~1000 cổ phiếu vốn hóa lớn nhất nước Mỹ</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data Source (Nguồn dữ liệu)</strong></td>
+                        <td><strong>Yahoo Finance</strong> — miễn phí, dùng thư viện <code>yfinance</code> (Python)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data History (Lịch sử)</strong></td>
+                        <td><strong>≥ 10 năm</strong> — ít nhất từ 2014 đến nay</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Universe Size tối thiểu</strong></td>
+                        <td><strong>≥ 500 cổ phiếu</strong> (tốt nhất là lấy đủ Russell 1000)</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 9: DATA SPLITTING ===================== -->
+    <section id="data">
+        <h2><em class="icon">💾</em> Yêu cầu #2: Data & Splitting</h2>
+
+        <h3>Chia dữ liệu In-Sample vs Out-of-Sample</h3>
+        <div class="card warn">
+            <div class="card-title">⚠️ QUY TẮC TUYỆT ĐỐI: Không được xem Out-of-Sample khi phát triển!</div>
+            <p>
+                Mốc chia: <strong>01/01/2024</strong>
+            </p>
+            <ul>
+                <li><strong>In-Sample</strong> (Trong mẫu): Tất cả dữ liệu <strong>trước 01/01/2024</strong> — dùng để xây dựng, thử nghiệm, tối ưu chiến lược</li>
+                <li><strong>Out-of-Sample</strong> (Ngoài mẫu): Tất cả dữ liệu <strong>từ 01/01/2024 trở về sau</strong> — chỉ dùng để kiểm tra cuối cùng, <strong>TUYỆT ĐỐI KHÔNG ĐƯỢC XEM</strong> trong quá trình phát triển</li>
+            </ul>
+        </div>
+
+        <div style="text-align:center; margin: 24px 0;">
+            <div style="display:inline-block; background: rgba(0,0,0,0.3); border-radius: 12px; padding: 24px 32px; text-align: left;">
+                <div style="font-size:0.8rem; color:#9ca3af; margin-bottom:8px;">TIMELINE DỮ LIỆU</div>
+                <div style="display:flex; align-items:center; gap:0;">
+                    <div style="background: rgba(52, 211, 153, 0.2); border: 1px solid rgba(52, 211, 153, 0.4); padding: 12px 28px; border-radius: 8px 0 0 8px;">
+                        <div style="font-size:0.7rem; color:#34d399;">IN-SAMPLE</div>
+                        <div style="font-weight:700;">2014 — 2023</div>
+                        <div style="font-size:0.75rem; color:#9ca3af;">Xây dựng & tối ưu</div>
+                    </div>
+                    <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); border-left: 3px solid #ef4444; padding: 12px 28px; border-radius: 0 8px 8px 0;">
+                        <div style="font-size:0.7rem; color:#ef4444;">OUT-OF-SAMPLE 🔒</div>
+                        <div style="font-weight:700;">2024 → nay</div>
+                        <div style="font-size:0.75rem; color:#9ca3af;">KHÔNG ĐƯỢC XEM!</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3>Tại sao phải chia như vậy?</h3>
+        <p>
+            Trong machine learning / quant finance, nếu bạn tối ưu chiến lược trên toàn bộ dữ liệu,
+            bạn có thể bị <strong>overfitting</strong> — chiến lược "nhớ" dữ liệu quá khứ nhưng
+            không có khả năng dự đoán tương lai. Out-of-sample là bài kiểm tra cuối cùng xem chiến lược
+            có thật sự tổng quát (generalizable) hay không.
+        </p>
+        <p>
+            Nếu bạn lén xem out-of-sample trong quá trình phát triển, bạn sẽ vô tình (hoặc cố ý)
+            điều chỉnh chiến lược để nó chạy tốt trên dữ liệu đó → kết quả không còn đáng tin cậy.
+        </p>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 10: RUSSELL 1000 ===================== -->
+    <section id="russell">
+        <h2><em class="icon">🏛️</em> Yêu cầu #3: Russell 1000 — Universe</h2>
+
+        <h3>Russell 1000 là gì?</h3>
+        <div class="card">
+            <p>
+                <strong>Russell 1000 Index</strong> là chỉ số bao gồm <strong>~1000 cổ phiếu có vốn hóa thị trường lớn nhất</strong>
+                tại thị trường Mỹ. Nó đại diện cho khoảng <strong>93% giá trị</strong> toàn bộ thị trường cổ phiếu Mỹ.
+            </p>
+            <p>
+                Russell 1000 được <strong>tái cấu trúc (reconstitution)</strong> hàng năm — thêm cổ phiếu mới,
+                loại cổ phiếu cũ dựa trên vốn hóa thị trường tại "Rank Day" (thường cuối tháng 4-6).
+            </p>
+        </div>
+
+        <h3>Point-in-Time Russell 1000 (Quan trọng!)</h3>
+        <div class="card warn">
+            <div class="card-title">⚠️ Tại sao cần Point-in-Time?</div>
+            <p>
+                Nếu bạn lấy danh sách Russell 1000 của ngày hôm nay và backtest từ 10 năm trước,
+                bạn đang mắc lỗi <strong>survivorship bias</strong>:
+            </p>
+            <ul>
+                <li>Một số cổ phiếu trong list hôm nay 10 năm trước chưa đủ lớn để vào Russell 1000</li>
+                <li>Một số cổ phiếu 10 năm trước nằm trong Russell 1000 nhưng nay đã phá sản hoặc quá nhỏ</li>
+                <li>→ Kết quả backtest bị <strong>thiên lệch lạc quan</strong>, không phản ánh thực tế</li>
+            </ul>
+        </div>
+
+        <h3>Cách tạo Point-in-Time Russell 1000</h3>
+        <p>Theo hướng dẫn của thầy (file <code>Rusell.md</code>):</p>
+
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="tl-title">1. Lấy snapshot hiện tại</div>
+                <div class="tl-desc">
+                    Download danh sách holdings từ ETF <strong>IWB</strong> (iShares Russell 1000)
+                    hoặc <strong>VONE</strong> (Vanguard Russell 1000). Đây là proxy rất sát cho Russell 1000 hiện tại.
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="tl-title">2. Thu thập additions/deletions hàng năm</div>
+                <div class="tl-desc">
+                    FTSE Russell công bố danh sách cổ phiếu được <strong>thêm vào (additions)</strong>
+                    và <strong>loại ra (deletions)</strong> mỗi năm trong annual reconstitution.
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="tl-title">3. Đi ngược (reverse) để tạo snapshot cũ hơn</div>
+                <div class="tl-desc">
+                    <div class="formula-box">
+<span class="comment">// Công thức đi ngược:</span>
+<span class="keyword">R(2025)</span> = ( R(2026) − Additions(2026) ) ∪ Deletions(2026)
+<span class="keyword">R(2024)</span> = ( R(2025) − Additions(2025) ) ∪ Deletions(2025)
+<span class="comment">// ... tiếp tục cho các năm trước</span>
+                    </div>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="tl-title">4. Lưu thành file CSV cho mỗi năm</div>
+                <div class="tl-desc">
+                    <code>russell1000_2026.csv</code>, <code>russell1000_2025.csv</code>, ..., <code>russell1000_2014.csv</code>
+                </div>
+            </div>
+        </div>
+
+        <h3>Nguồn dữ liệu miễn phí</h3>
+        <table>
+            <thead>
+                <tr><th>Nguồn</th><th>Ticker</th><th>Mô tả</th><th>Link</th></tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>iShares Russell 1000 ETF</td>
+                    <td>IWB</td>
+                    <td>Download Holdings CSV miễn phí, có CUSIP/ISIN/SEDOL</td>
+                    <td><a href="https://www.ishares.com/us/products/239707/ishares-russell-1000-etf" target="_blank">ishares.com</a></td>
+                </tr>
+                <tr>
+                    <td>Vanguard Russell 1000 ETF</td>
+                    <td>VONE</td>
+                    <td>Full replication, monthly historical holdings</td>
+                    <td><a href="https://advisors.vanguard.com/investments/products/vone/vanguard-russell-1000-etf" target="_blank">vanguard.com</a></td>
+                </tr>
+                <tr>
+                    <td>Yahoo Finance</td>
+                    <td>—</td>
+                    <td>Download giá cổ phiếu lịch sử miễn phí (dùng <code>yfinance</code>)</td>
+                    <td><a href="https://finance.yahoo.com" target="_blank">finance.yahoo.com</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 11: TARGET ===================== -->
+    <section id="target">
+        <h2><em class="icon">🎯</em> Yêu cầu #4: Target & Output</h2>
+
+        <div class="card highlight">
+            <div class="card-title">Output mỗi ngày giao dịch</div>
+            <p>
+                Thuật toán phải xuất ra một <strong>vector positions</strong> cho tất cả cổ phiếu trong universe:
+            </p>
+            <div class="formula-box">
+<span class="comment">// Output mỗi ngày t:</span>
+<span class="keyword">positions[t]</span> = [α₁, α₂, α₃, ..., αₙ]
+
+<span class="comment">// Trong đó:</span>
+<span class="comment">//   n ≈ 1000 (số cổ phiếu trong universe)</span>
+<span class="comment">//   αᵢ > 0  → LONG (mua) cổ phiếu i</span>
+<span class="comment">//   αᵢ < 0  → SHORT (bán) cổ phiếu i</span>
+<span class="comment">//   αᵢ = 0  → không giữ cổ phiếu i</span>
+
+<span class="comment">// Điều kiện bắt buộc:</span>
+<span class="keyword">Σ αᵢ = 0</span>   <span class="comment">(long-short balanced)</span>
+            </div>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 12: PERFORMANCE ===================== -->
+    <section id="performance">
+        <h2><em class="icon">📈</em> Yêu cầu #5: Performance Metrics</h2>
+
+        <p>Thầy yêu cầu đánh giá chiến lược bằng 2 chỉ số chính:</p>
+
+        <div class="glossary-grid">
+            <div class="glossary-item">
+                <div class="term">1. Annualized Return</div>
+                <div class="def">
+                    Lợi nhuận quy đổi ra năm.<br>
+                    <code>= mean(daily_pnl) × 252</code><br>
+                    Cho biết chiến lược kiếm được bao nhiêu % mỗi năm.
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">2. Sharpe Ratio</div>
+                <div class="def">
+                    Lợi nhuận / Rủi ro.<br>
+                    <code>= Ann. Return / Ann. Volatility</code><br>
+                    <code>= Ann. Return / (std(daily_pnl) × √252)</code><br>
+                    Cho biết chiến lược có đáng để đầu tư không (risk-adjusted).
+                </div>
+            </div>
+        </div>
+
+        <div class="card success">
+            <div class="card-title">Mục tiêu tối thiểu</div>
+            <ul>
+                <li>Annualized Return: <strong>> 0%</strong> (chiến lược phải lãi)</li>
+                <li>Sharpe Ratio: <strong>> 0.5</strong> (tạm chấp nhận), <strong>> 1.0</strong> (tốt)</li>
+                <li>Đường equity curve (PnL tích lũy) phải <strong>đi lên đều đặn</strong>, không có sụt giảm quá lớn (drawdown)</li>
+            </ul>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 13: ADVANCED ===================== -->
+    <section id="advanced">
+        <h2><em class="icon">🚀</em> Scope nâng cao: Diversified Alphas & Meta</h2>
+
+        <div class="card">
+            <p>
+                Thầy gợi ý rằng mục tiêu xa hơn không chỉ dừng ở <strong>1 alpha</strong>,
+                mà xây dựng được <strong>nhiều alpha độc lập</strong> (diversified set) và kết hợp chúng.
+            </p>
+        </div>
+
+        <h3>Tại sao cần nhiều alpha?</h3>
+        <p>
+            Một alpha đơn lẻ (VD: 5-day reversal) có thể hoạt động tốt trong một số giai đoạn thị trường
+            nhưng kém trong giai đoạn khác. Khi kết hợp nhiều alpha đa dạng:
+        </p>
+        <ul>
+            <li>Mỗi alpha khai thác một khía cạnh khác nhau của thị trường</li>
+            <li>Khi alpha A thất bại, alpha B có thể thành công → bù đắp cho nhau</li>
+            <li>Kết quả tổng thể <strong>ổn định hơn</strong> (Sharpe ratio cao hơn)</li>
+        </ul>
+
+        <h3>Meta Alpha là gì?</h3>
+        <div class="card highlight">
+            <div class="card-title">Meta Alpha = Kết hợp nhiều Alpha thành 1</div>
+            <div class="formula-box">
+<span class="comment">// Giả sử có K alpha khác nhau: α¹, α², ..., αᴷ</span>
+<span class="comment">// Mỗi alpha là một vector n chiều (n cổ phiếu)</span>
+
+<span class="comment">// Meta Alpha = tổ hợp tuyến tính có trọng số:</span>
+<span class="keyword">α_meta</span> = w₁ × α¹ + w₂ × α² + ... + wₖ × αᴷ
+
+<span class="comment">// Trong đó w₁, w₂, ..., wₖ là trọng số (có thể bằng nhau hoặc tối ưu)</span>
+<span class="comment">// Sau đó demean α_meta để đảm bảo long-short balanced</span>
+            </div>
+        </div>
+
+        <h3>Các loại Alpha có thể thử</h3>
+        <details>
+            <summary>Mean Reversion (Đảo chiều trung bình)</summary>
+            <div class="detail-content">
+                <p>Cổ phiếu giảm nhiều → sẽ tăng lại (và ngược lại). VD: 5-day reversal.</p>
+                <p>Biến thể: 3-day, 10-day, 20-day reversal, Bollinger Bands, RSI-based...</p>
+            </div>
+        </details>
+        <details>
+            <summary>Momentum (Động lượng)</summary>
+            <div class="detail-content">
+                <p>Cổ phiếu đang tăng → tiếp tục tăng. Ngược với mean reversion.</p>
+                <p>Thường dùng timeframe dài hơn: 3-12 tháng. VD: mua top 20% cổ phiếu tăng mạnh nhất 6 tháng qua.</p>
+            </div>
+        </details>
+        <details>
+            <summary>Volume-based (Dựa trên khối lượng giao dịch)</summary>
+            <div class="detail-content">
+                <p>Khối lượng giao dịch bất thường có thể là tín hiệu. VD: volume spike + giá giảm → có thể là cơ hội mua.</p>
+            </div>
+        </details>
+        <details>
+            <summary>Volatility-based (Dựa trên biến động)</summary>
+            <div class="detail-content">
+                <p>Cổ phiếu có volatility thấp bất thường → có thể sắp có big move.</p>
+                <p>Cổ phiếu có volatility quá cao → rủi ro lớn, nên giảm position.</p>
+            </div>
+        </details>
+        <details>
+            <summary>Cross-sectional (So sánh giữa các cổ phiếu)</summary>
+            <div class="detail-content">
+                <p>So sánh relative strength giữa các cổ phiếu trong cùng ngành (sector). VD: Mua cổ phiếu mạnh nhất trong sector yếu nhất.</p>
+            </div>
+        </details>
+        <details>
+            <summary>Seasonal / Calendar (Mùa vụ)</summary>
+            <div class="detail-content">
+                <p>Hiệu ứng ngày trong tuần (Monday effect), cuối tháng, đầu quý. VD: cổ phiếu thường tăng vào cuối tháng do rebalancing.</p>
+            </div>
+        </details>
+
+        <div class="card success">
+            <div class="card-title">Mục tiêu đặt ra</div>
+            <p>
+                Xây dựng được <strong>~10 alpha đủ tốt</strong> (Sharpe > 0.5 mỗi cái) và kết hợp
+                thành một <strong>robust meta alpha</strong> có Sharpe ratio cao hơn đáng kể so với từng alpha đơn lẻ.
+            </p>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN: KIẾN TRÚC HỆ THỐNG ===================== -->
+    <section id="architecture">
+        <h2><em class="icon">🏗️</em> Kiến trúc Hệ thống (System Architecture)</h2>
+
+        <div class="card highlight">
+            <div class="card-title">Kiến trúc end-to-end cho dự án Alpha Pipeline</div>
+            <p>
+                Sơ đồ dưới đây mô tả toàn bộ hệ thống từ thu thập dữ liệu đến monitoring.
+                Đây là kiến trúc <strong>production-grade</strong> — bắt đầu từ core pipeline 
+                (Data → Features → Models → Ensemble) rồi mở rộng dần.
+            </p>
+        </div>
+
+        <div class="card" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(167, 139, 250, 0.25); overflow-x: auto;">
+<pre style="margin:0; white-space:pre; color:#c0c0c0; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size:0.82rem; line-height:1.9; padding: 8px;">
+                    <span style="color:#60a5fa;">┌───────────────┐</span>
+                    <span style="color:#60a5fa;">│</span>  <span style="color:#60a5fa; font-weight:bold;">Market Data</span>  <span style="color:#60a5fa;">│</span>   <span style="color:#6b7280;">Yahoo Finance API (OHLCV)</span>
+                    <span style="color:#60a5fa;">└───────┬───────┘</span>
+                            <span style="color:#60a5fa;">↓</span>
+                    <span style="color:#60a5fa;">┌───────────────┐</span>
+                    <span style="color:#60a5fa;">│</span> <span style="color:#60a5fa; font-weight:bold;">Data Pipeline</span> <span style="color:#60a5fa;">│</span>   <span style="color:#6b7280;">Clean, split, handle missing data</span>
+                    <span style="color:#60a5fa;">└───────┬───────┘</span>
+                            <span style="color:#60a5fa;">↓</span>
+                    <span style="color:#a78bfa;">┌───────────────┐</span>
+                    <span style="color:#a78bfa;">│</span> <span style="color:#a78bfa; font-weight:bold;">Feature Store</span> <span style="color:#a78bfa;">│</span>   <span style="color:#6b7280;">50+ features: price, volume, tech indicators</span>
+                    <span style="color:#a78bfa;">└───────┬───────┘</span>
+                            <span style="color:#a78bfa;">↓</span>
+             <span style="color:#f59e0b;">┌──────────────┼──────────────┐</span>
+             <span style="color:#f59e0b;">↓</span>              <span style="color:#f59e0b;">↓</span>              <span style="color:#f59e0b;">↓</span>
+      <span style="color:#f59e0b;">┌──────────┐</span>  <span style="color:#f59e0b;">┌──────────────┐</span>  <span style="color:#f59e0b;">┌──────────┐</span>
+      <span style="color:#f59e0b;">│</span> <span style="color:#f59e0b; font-weight:bold;">XGBoost</span>  <span style="color:#f59e0b;">│</span>  <span style="color:#f59e0b;">│</span> <span style="color:#f59e0b; font-weight:bold;">LambdaMART</span>   <span style="color:#f59e0b;">│</span>  <span style="color:#f59e0b;">│</span>   <span style="color:#f59e0b; font-weight:bold;">LSTM</span>   <span style="color:#f59e0b;">│</span>
+      <span style="color:#f59e0b;">└────┬─────┘</span>  <span style="color:#f59e0b;">└──────┬───────┘</span>  <span style="color:#f59e0b;">└────┬─────┘</span>
+             <span style="color:#f59e0b;">↓</span>              <span style="color:#f59e0b;">↓</span>              <span style="color:#f59e0b;">↓</span>
+        <span style="color:#34d399;">Alpha 1</span>        <span style="color:#34d399;">Alpha 2</span>         <span style="color:#34d399;">Alpha 3</span>
+             <span style="color:#34d399;">│</span>              <span style="color:#34d399;">│</span>              <span style="color:#34d399;">│</span>
+             <span style="color:#34d399;">└──────────────┼──────────────┘</span>
+                            <span style="color:#34d399;">↓</span>
+                    <span style="color:#34d399;">┌───────────────┐</span>
+                    <span style="color:#34d399;">│</span><span style="color:#34d399; font-weight:bold;">Alpha Ensemble</span> <span style="color:#34d399;">│</span>   <span style="color:#6b7280;">Meta Alpha (Ridge/ML-based weights)</span>
+                    <span style="color:#34d399;">└───────┬───────┘</span>
+                            <span style="color:#34d399;">↓</span>
+                    <span style="color:#c084fc;">┌───────────────┐</span>
+                    <span style="color:#c084fc;">│</span><span style="color:#c084fc; font-weight:bold;">Ranking Engine</span> <span style="color:#c084fc;">│</span>   <span style="color:#6b7280;">Demean → Long-Short → PnL</span>
+                    <span style="color:#c084fc;">└───────┬───────┘</span>
+                            <span style="color:#c084fc;">↓</span>
+                    <span style="color:#c084fc;">┌───────┴───────┐</span>
+                    <span style="color:#c084fc;">↓</span>               <span style="color:#c084fc;">↓</span>
+             <span style="color:#60a5fa;">┌──────────┐</span>  <span style="color:#60a5fa;">┌──────────┐</span>
+             <span style="color:#60a5fa;">│</span> <span style="color:#60a5fa; font-weight:bold;">REST API</span> <span style="color:#60a5fa;">│</span>  <span style="color:#60a5fa;">│</span> <span style="color:#60a5fa; font-weight:bold;">Database</span>  <span style="color:#60a5fa;">│</span>
+             <span style="color:#60a5fa;">└────┬─────┘</span>  <span style="color:#60a5fa;">└──────────┘</span>
+                  <span style="color:#60a5fa;">↓</span>
+             <span style="color:#34d399;">┌──────────┐</span>
+             <span style="color:#34d399;">│</span><span style="color:#34d399; font-weight:bold;">Dashboard</span> <span style="color:#34d399;">│</span>    <span style="color:#6b7280;">Streamlit / Plotly Dash</span>
+             <span style="color:#34d399;">└──────────┘</span>
+                  <span style="color:#f59e0b;">↑</span>
+             <span style="color:#f59e0b;">┌──────────┐</span>
+             <span style="color:#f59e0b;">│</span><span style="color:#f59e0b; font-weight:bold;">Monitoring</span><span style="color:#f59e0b;">│</span>    <span style="color:#6b7280;">Theo dõi hiệu suất hệ thống</span>
+             <span style="color:#f59e0b;">└────┬─────┘</span>
+             <span style="color:#ef4444;">┌──────┴──────┐</span>
+             <span style="color:#ef4444;">↓</span>             <span style="color:#ef4444;">↓</span>
+      <span style="color:#ef4444;">┌────────────┐ ┌────────────┐</span>
+      <span style="color:#ef4444;">│</span><span style="color:#ef4444; font-weight:bold;"> Data Drift </span><span style="color:#ef4444;">│ │</span><span style="color:#ef4444; font-weight:bold;">Model Drift </span><span style="color:#ef4444;">│</span>
+      <span style="color:#ef4444;">└──────┬─────┘ └──────┬─────┘</span>
+             <span style="color:#ef4444;">└──────┬──────┘</span>
+                    <span style="color:#ef4444;">↓</span>
+             <span style="color:#a78bfa;">┌────────────┐</span>
+             <span style="color:#a78bfa;">│</span><span style="color:#a78bfa; font-weight:bold;"> Retraining </span><span style="color:#a78bfa;">│</span>   <span style="color:#6b7280;">Tự động train lại khi drift detected</span>
+             <span style="color:#a78bfa;">└────────────┘</span>
+</pre>
+        </div>
+
+        <h3>Giải thích từng thành phần</h3>
+
+        <div class="glossary-grid">
+            <div class="glossary-item">
+                <div class="term">📥 Market Data</div>
+                <div class="term-en">Nguồn dữ liệu</div>
+                <div class="def">Download dữ liệu OHLCV (Open, High, Low, Close, Volume) từ Yahoo Finance cho ~1000 cổ phiếu Russell 1000, ≥10 năm lịch sử.</div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">🔄 Data Pipeline</div>
+                <div class="term-en">Đường ống dữ liệu</div>
+                <div class="def">Xử lý dữ liệu thô: clean missing values, handle stock splits, chia in-sample/out-of-sample. Đảm bảo dữ liệu sạch trước khi đưa vào ML.</div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">🧬 Feature Store</div>
+                <div class="term-en">Kho đặc trưng</div>
+                <div class="def">Tạo 50+ features từ dữ liệu giá: returns, technical indicators (RSI, MACD), volume ratios, volatility. Đây là "nguyên liệu" cho ML models.</div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">🤖 ML Models (x3)</div>
+                <div class="term-en">Mô hình máy học</div>
+                <div class="def">
+                    <strong>XGBoost:</strong> Gradient boosting cho tabular data<br>
+                    <strong>LambdaMART:</strong> Learning-to-Rank (dự đoán thứ hạng)<br>
+                    <strong>LSTM:</strong> Deep Learning cho sequential patterns
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">🔗 Alpha Ensemble</div>
+                <div class="term-en">Kết hợp Alpha</div>
+                <div class="def">Combine 3 alpha signals thành 1 meta alpha mạnh hơn. Dùng Ridge Regression hoặc Inverse Volatility weighting. Đa dạng hóa giảm rủi ro.</div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">📊 Ranking Engine</div>
+                <div class="term-en">Động cơ xếp hạng</div>
+                <div class="def">Chuyển alpha signal → positions (demean → long-short balanced). Tính PnL, Sharpe ratio, equity curve. Đây là bước backtest chiến lược.</div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">🌐 REST API + Database</div>
+                <div class="term-en">API & Cơ sở dữ liệu</div>
+                <div class="def">FastAPI cung cấp endpoints /predict, /backtest. SQLite/PostgreSQL lưu trữ predictions, model metadata, kết quả backtest.</div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">📈 Dashboard + Monitoring</div>
+                <div class="term-en">Bảng điều khiển & Giám sát</div>
+                <div class="def">Streamlit dashboard hiển thị kết quả. Monitoring phát hiện Data Drift (features thay đổi phân phối) và Model Drift (model performance sụt giảm) → tự động trigger retraining.</div>
+            </div>
+        </div>
+
+        <div class="card success">
+            <div class="card-title">🎯 Thứ tự triển khai khuyến nghị</div>
+            <p>
+                <strong>Pha 1 (Core — Bắt buộc):</strong> Market Data → Data Pipeline → Feature Store → ML Models → Alpha Ensemble → Ranking Engine<br>
+                <strong>Pha 2 (Mở rộng):</strong> REST API + Database → Dashboard<br>
+                <strong>Pha 3 (Nâng cao):</strong> Monitoring → Drift Detection → Retraining
+            </p>
+            <p>
+                Hoàn thành <strong>Pha 1</strong> trước là đã đủ cho đồ án. Pha 2 & 3 là bonus để nâng điểm.
+            </p>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN AI & ML ===================== -->
+    <section id="ai-ml-quant">
+        <h2><em class="icon">🤖</em> AI & Machine Learning trong Quantitative Finance</h2>
+
+        <div class="card highlight">
+            <div class="card-title">Vậy AI / ML ở đâu trong đồ án này?</div>
+            <p>
+                Đây là câu hỏi rất hay! Đồ án này <strong>không chỉ là viết công thức toán đơn giản</strong>. 
+                Phần cốt lõi mà sinh viên chuyên ngành AI cần làm chính là: <strong>dùng Machine Learning 
+                để tạo ra các alpha signals thông minh hơn, và kết hợp nhiều alpha lại với nhau (meta alpha)</strong>.
+            </p>
+            <p>
+                Nói cách khác: <strong>Alpha truyền thống</strong> (như 5-day reversal) dùng công thức cố định.
+                <strong>AI-based Alpha</strong> dùng mô hình ML để <em>học</em> từ dữ liệu và tự tìm ra pattern
+                mà con người khó nhận ra.
+            </p>
+        </div>
+
+        <!-- ===== AI FIT DIAGRAM ===== -->
+        <h3>AI/ML nằm ở đâu trong pipeline?</h3>
+
+        <div class="card" style="background: rgba(0,0,0,0.3); border: 1px solid rgba(96, 165, 250, 0.2);">
+            <div style="text-align:center;">
+<pre style="margin:0; white-space:pre; overflow-x:auto; color:#c0c0c0; font-family: 'Cascadia Code', monospace; font-size:0.85rem; line-height:2; display:inline-block; text-align:left;">
+┌─────────────────────────────────────────────────────────────────────┐
+│              🤖 AI/ML TRONG PIPELINE ĐỒ ÁN                         │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  <span style="color:#9ca3af;">BƯỚC 1: Thu thập dữ liệu</span>          ← Chưa cần ML                   │
+│  │  Yahoo Finance → OHLCV data                                     │
+│  ▼                                                                  │
+│  <span style="color:#60a5fa;">BƯỚC 2: Feature Engineering</span>       ← <span style="color:#f59e0b;">🔥 ML BẮT ĐẦU TỪ ĐÂY</span>            │
+│  │  Tạo 50-100+ features từ raw data                               │
+│  │  (returns, moving averages, RSI, volatility, ...)                │
+│  ▼                                                                  │
+│  <span style="color:#a78bfa;">BƯỚC 3: Huấn luyện ML Model</span>       ← <span style="color:#f59e0b;">🔥 PHẦN CHÍNH CỦA AI</span>             │
+│  │  XGBoost / LightGBM / Linear / Neural Network                   │
+│  │  Target: dự đoán return ngày mai (hoặc ranking)                  │
+│  ▼                                                                  │
+│  <span style="color:#34d399;">BƯỚC 4: Model Output → Alpha</span>      ← Prediction = Alpha signal      │
+│  │  Demean → Long-Short Balanced positions                          │
+│  ▼                                                                  │
+│  <span style="color:#c084fc;">BƯỚC 5: Combine nhiều Alpha</span>       ← <span style="color:#f59e0b;">🔥 ML LẦN 2 (Meta Model)</span>         │
+│  │  Dùng ML để tìm trọng số tối ưu kết hợp alpha                   │
+│  ▼                                                                  │
+│  <span style="color:#34d399;">BƯỚC 6: Backtest & Đánh giá</span>       ← Sharpe, Return, Equity Curve   │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+</pre>
+            </div>
+        </div>
+
+        <div class="card warn">
+            <div class="card-title">⚡ Tóm lại: ML được dùng ít nhất 2 lần</div>
+            <ul>
+                <li><strong>Lần 1:</strong> Dùng ML model để tạo ra alpha signal (dự đoán cổ phiếu nào sẽ lên/xuống)</li>
+                <li><strong>Lần 2:</strong> Dùng ML để combine nhiều alpha thành meta alpha (tìm trọng số tối ưu)</li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <!-- ===== FEATURE ENGINEERING ===== -->
+        <h3>Bước 2: Feature Engineering — Tạo đặc trưng cho ML</h3>
+        <p>
+            Trước khi train model, bạn cần biến dữ liệu giá thô (OHLCV) thành các <strong>features</strong>
+            (đặc trưng) có ý nghĩa. Đây là bước quan trọng nhất — <em>"garbage in, garbage out"</em>.
+        </p>
+
+        <div class="glossary-grid">
+            <div class="glossary-item">
+                <div class="term">📊 Price-based Features</div>
+                <div class="def">
+                    <ul>
+                        <li><code>return_1d</code> = % thay đổi giá 1 ngày</li>
+                        <li><code>return_5d</code> = % thay đổi giá 5 ngày</li>
+                        <li><code>return_20d</code> = % thay đổi giá 20 ngày (1 tháng)</li>
+                        <li><code>close / SMA_50</code> = giá hiện tại so với trung bình 50 ngày</li>
+                        <li><code>high_low_range</code> = (high - low) / close</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">📈 Technical Indicators</div>
+                <div class="def">
+                    <ul>
+                        <li><code>RSI(14)</code> = Relative Strength Index</li>
+                        <li><code>MACD</code> = Moving Average Convergence Divergence</li>
+                        <li><code>Bollinger Bands</code> = độ lệch so với dải biến động</li>
+                        <li><code>ATR(14)</code> = Average True Range (đo volatility)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">📦 Volume Features</div>
+                <div class="def">
+                    <ul>
+                        <li><code>volume_ratio</code> = volume hôm nay / avg volume 20 ngày</li>
+                        <li><code>OBV</code> = On-Balance Volume</li>
+                        <li><code>VWAP_deviation</code> = giá so với Volume-Weighted Avg Price</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">📉 Volatility Features</div>
+                <div class="def">
+                    <ul>
+                        <li><code>volatility_20d</code> = std(returns) trong 20 ngày</li>
+                        <li><code>volatility_ratio</code> = vol ngắn hạn / vol dài hạn</li>
+                        <li><code>max_drawdown_20d</code> = sụt giảm tối đa trong 20 ngày</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="formula-box">
+<span class="comment"># Ví dụ Python: Tạo features từ dữ liệu giá</span>
+<span class="keyword">import</span> pandas <span class="keyword">as</span> pd
+<span class="keyword">import</span> numpy <span class="keyword">as</span> np
+
+<span class="keyword">def</span> <span class="var">create_features</span>(df):
+    <span class="comment"># Price-based features</span>
+    df[<span class="var">'return_1d'</span>]  = df['close'].pct_change(1)
+    df[<span class="var">'return_5d'</span>]  = df['close'].pct_change(5)
+    df[<span class="var">'return_20d'</span>] = df['close'].pct_change(20)
+
+    <span class="comment"># Moving averages</span>
+    df[<span class="var">'sma_10'</span>] = df['close'].rolling(10).mean()
+    df[<span class="var">'sma_50'</span>] = df['close'].rolling(50).mean()
+    df[<span class="var">'close_to_sma50'</span>] = df['close'] / df['sma_50'] - 1
+
+    <span class="comment"># Volatility</span>
+    df[<span class="var">'volatility_20d'</span>] = df['return_1d'].rolling(20).std()
+
+    <span class="comment"># Volume ratio</span>
+    df[<span class="var">'volume_ratio'</span>] = df['volume'] / df['volume'].rolling(20).mean()
+
+    <span class="comment"># RSI (Relative Strength Index)</span>
+    delta = df['close'].diff()
+    gain = delta.where(delta > 0, 0).rolling(14).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+    df[<span class="var">'RSI'</span>] = 100 - (100 / (1 + gain / loss))
+
+    <span class="keyword">return</span> df
+        </div>
+
+        <hr>
+
+        <!-- ===== ML MODELS ===== -->
+        <h3>Bước 3: Chọn ML Model — Mô hình nào phù hợp?</h3>
+
+        <p>Dưới đây là các mô hình ML phổ biến nhất trong quantitative finance, được sắp xếp
+        <strong>từ đơn giản → phức tạp</strong>:</p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Mô hình</th>
+                    <th>Loại</th>
+                    <th>Ưu điểm</th>
+                    <th>Nhược điểm</th>
+                    <th>Độ khó</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Linear Regression<br>(Ridge / Lasso)</strong></td>
+                    <td>Linear</td>
+                    <td>Đơn giản, nhanh, ít overfit, dễ giải thích</td>
+                    <td>Không capture được non-linear patterns</td>
+                    <td>⭐</td>
+                </tr>
+                <tr>
+                    <td><strong>XGBoost</strong></td>
+                    <td>Gradient Boosted Trees</td>
+                    <td>Rất mạnh, handle missing data, feature importance tự động</td>
+                    <td>Dễ overfit nếu tune sai, chậm hơn LightGBM</td>
+                    <td>⭐⭐</td>
+                </tr>
+                <tr>
+                    <td><strong>LightGBM</strong></td>
+                    <td>Gradient Boosted Trees</td>
+                    <td>Nhanh hơn XGBoost, tốt với large datasets, native categorical support</td>
+                    <td>Cần tune hyperparameters cẩn thận</td>
+                    <td>⭐⭐</td>
+                </tr>
+                <tr>
+                    <td><strong>Random Forest</strong></td>
+                    <td>Ensemble (Bagging)</td>
+                    <td>Robust, ít overfit hơn single tree, dễ dùng</td>
+                    <td>Chậm với large data, kém hơn boosting methods</td>
+                    <td>⭐⭐</td>
+                </tr>
+                <tr>
+                    <td><strong>Neural Network<br>(MLP / LSTM)</strong></td>
+                    <td>Deep Learning</td>
+                    <td>Capture complex patterns, tốt cho time-series (LSTM)</td>
+                    <td>Cần rất nhiều data, dễ overfit, khó giải thích, chậm</td>
+                    <td>⭐⭐⭐</td>
+                </tr>
+                <tr>
+                    <td><strong>Transformer<br>(Temporal Fusion)</strong></td>
+                    <td>Deep Learning</td>
+                    <td>State-of-the-art cho time series, attention mechanism</td>
+                    <td>Phức tạp, cần GPU, rất dễ overfit trong finance</td>
+                    <td>⭐⭐⭐⭐</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="card success">
+            <div class="card-title">🎯 Gợi ý cho sinh viên</div>
+            <p>
+                <strong>Bắt đầu với Linear (Ridge/Lasso)</strong> để hiểu baseline,
+                sau đó chuyển sang <strong>LightGBM hoặc XGBoost</strong> — đây là combo được
+                dùng nhiều nhất trong quant finance thực tế. Chỉ thử Deep Learning khi đã master 2 cái trên.
+            </p>
+        </div>
+
+        <hr>
+
+        <!-- ===== ML PIPELINE CODE ===== -->
+        <h3>Pipeline ML hoàn chỉnh: Từ data → alpha signal</h3>
+
+        <div class="formula-box">
+<span class="comment"># ====== PIPELINE ML ĐỂ TẠO ALPHA SIGNAL ======</span>
+<span class="keyword">import</span> lightgbm <span class="keyword">as</span> lgb
+<span class="keyword">from</span> sklearn.model_selection <span class="keyword">import</span> TimeSeriesSplit
+<span class="keyword">from</span> sklearn.metrics <span class="keyword">import</span> mean_squared_error
+
+<span class="comment"># 1. Chuẩn bị TARGET: return ngày mai (what we want to predict)</span>
+df[<span class="var">'target'</span>] = df.groupby('ticker')['close'].pct_change(1).shift(-1)
+<span class="comment">#                                                       ↑ shift(-1) = lấy return NGÀY MAI</span>
+
+<span class="comment"># 2. Tạo features (như bước 2 ở trên)</span>
+features = [<span class="var">'return_1d', 'return_5d', 'return_20d', 'volatility_20d',
+            'volume_ratio', 'RSI', 'close_to_sma50', ...</span>]
+
+<span class="comment"># 3. Split data THEO THỜI GIAN (KHÔNG random split!)</span>
+train = df[df['date'] < <span class="var">'2022-01-01'</span>]  <span class="comment"># train trên data cũ</span>
+valid = df[(df['date'] >= <span class="var">'2022-01-01'</span>) & (df['date'] < <span class="var">'2024-01-01'</span>)]
+
+<span class="comment"># 4. Train LightGBM model</span>
+model = lgb.LGBMRegressor(
+    n_estimators=500,
+    learning_rate=0.01,
+    max_depth=6,
+    num_leaves=31,
+    subsample=0.8,
+    colsample_bytree=0.8,
+    reg_alpha=0.1,
+    reg_lambda=0.1,
+)
+model.fit(train[features], train[<span class="var">'target'</span>],
+          eval_set=[(valid[features], valid[<span class="var">'target'</span>])],
+          callbacks=[lgb.early_stopping(50)])
+
+<span class="comment"># 5. Prediction → Alpha Signal!</span>
+df[<span class="var">'ml_alpha'</span>] = model.predict(df[features])
+
+<span class="comment"># 6. Demean (chuyển thành long-short balanced)</span>
+df[<span class="var">'ml_alpha_demeaned'</span>] = df.groupby('date')[<span class="var">'ml_alpha'</span>].transform(
+    <span class="keyword">lambda</span> x: x - x.mean()
+)
+<span class="comment"># → Giờ Σ alpha = 0 mỗi ngày → market neutral!</span>
+        </div>
+
+        <div class="card danger">
+            <div class="card-title">⚠️ Cảnh báo quan trọng: Look-ahead Bias</div>
+            <p>
+                Trong finance, bạn <strong>TUYỆT ĐỐI KHÔNG ĐƯỢC</strong> dùng dữ liệu tương lai để dự đoán.
+                Điều này có nghĩa:
+            </p>
+            <ul>
+                <li><strong>KHÔNG random split</strong> data — phải split theo thời gian (TimeSeriesSplit)</li>
+                <li><strong>KHÔNG normalize</strong> bằng mean/std của toàn bộ dataset — chỉ dùng data trong quá khứ</li>
+                <li><strong>KHÔNG dùng</strong> thông tin ngày T để dự đoán ngày T (phải dùng T-1 trở về trước)</li>
+                <li>Nếu vi phạm → kết quả backtest sẽ đẹp nhưng <strong>hoàn toàn vô nghĩa</strong></li>
+            </ul>
+        </div>
+
+        <hr>
+
+        <!-- ===== SPECIFIC ML APPROACHES ===== -->
+        <h3>Các hướng tiếp cận ML cụ thể cho đồ án</h3>
+
+        <details>
+            <summary>🔵 Hướng 1: ML-based Alpha đơn lẻ (Dễ — Nên bắt đầu từ đây)</summary>
+            <div class="detail-content">
+                <p><strong>Ý tưởng:</strong> Thay vì dùng công thức cố định (VD: 5-day reversal), bạn train một ML model
+                để dự đoán return ngày mai dựa trên nhiều features.</p>
+                <h4>Quy trình:</h4>
+                <ol>
+                    <li>Tạo 20-50 features từ dữ liệu giá (price, volume, volatility, technical indicators)</li>
+                    <li>Target = return ngày mai (hoặc ranking of returns)</li>
+                    <li>Train model: <code>Ridge</code> hoặc <code>LightGBM</code></li>
+                    <li>Prediction → demean → alpha signal</li>
+                    <li>Backtest: tính PnL, Sharpe ratio</li>
+                </ol>
+                <p><strong>Kỳ vọng Sharpe:</strong> 0.3 ~ 1.0 (tùy features và model)</p>
+            </div>
+        </details>
+
+        <details>
+            <summary>🟢 Hướng 2: Ensemble nhiều ML Alphas → Meta Alpha (Trung bình)</summary>
+            <div class="detail-content">
+                <p><strong>Ý tưởng:</strong> Tạo nhiều alpha (cả truyền thống lẫn ML-based), rồi dùng
+                một ML model <strong>cấp cao hơn</strong> để combine chúng.</p>
+                <h4>Quy trình:</h4>
+                <ol>
+                    <li>Xây dựng ~10 alpha signals:
+                        <ul>
+                            <li>3-4 alpha truyền thống (reversal, momentum, volume, volatility)</li>
+                            <li>3-4 alpha ML-based (LightGBM với feature sets khác nhau)</li>
+                            <li>2-3 alpha technical (RSI-based, MACD-based)</li>
+                        </ul>
+                    </li>
+                    <li>Dùng output của các alpha làm features cho <strong>meta model</strong></li>
+                    <li>Meta model (Ridge Regression hoặc XGBoost) học cách kết hợp tối ưu</li>
+                    <li>Output = meta alpha có Sharpe cao hơn từng alpha đơn lẻ</li>
+                </ol>
+                <p><strong>Kỳ vọng Sharpe:</strong> 1.0 ~ 2.0+ (diversification effect)</p>
+            </div>
+        </details>
+
+        <details>
+            <summary>🟡 Hướng 3: Learning-to-Rank (Nâng cao)</summary>
+            <div class="detail-content">
+                <p><strong>Ý tưởng:</strong> Thay vì dự đoán return chính xác, bạn dự đoán <strong>thứ hạng</strong>
+                (ranking) — cổ phiếu nào sẽ tốt hơn cổ phiếu nào.</p>
+                <h4>Tại sao ranking tốt hơn regression?</h4>
+                <ul>
+                    <li>Bạn không cần biết "AAPL sẽ tăng 1.5%" — chỉ cần biết "AAPL sẽ tốt hơn MSFT"</li>
+                    <li>Ranking ổn định hơn, ít bị ảnh hưởng bởi market-wide movements</li>
+                    <li>LightGBM có sẵn <code>objective='lambdarank'</code> cho việc này</li>
+                </ul>
+                <h4>Quy trình:</h4>
+                <ol>
+                    <li>Group data theo ngày</li>
+                    <li>Target = ranking of returns trong ngày đó (1 = tốt nhất, N = tệ nhất)</li>
+                    <li>Train LightGBM với <code>objective='lambdarank'</code></li>
+                    <li>Predicted ranking → demean → alpha signal</li>
+                </ol>
+                <p><strong>Kỳ vọng Sharpe:</strong> 0.5 ~ 1.5</p>
+            </div>
+        </details>
+
+        <details>
+            <summary>🔴 Hướng 4: Deep Learning — LSTM / Transformer (Khó)</summary>
+            <div class="detail-content">
+                <p><strong>Ý tưởng:</strong> Dùng mạng neural để capture complex temporal patterns
+                mà tree-based models bỏ lỡ.</p>
+                <h4>Các kiến trúc phổ biến:</h4>
+                <ul>
+                    <li><strong>LSTM (Long Short-Term Memory):</strong> Nhận chuỗi giá 30-60 ngày → dự đoán return ngày mai.
+                    Tốt cho sequential patterns.</li>
+                    <li><strong>Temporal Fusion Transformer:</strong> State-of-the-art cho time series forecasting.
+                    Có attention mechanism để biết features/time steps nào quan trọng.</li>
+                    <li><strong>Simple MLP:</strong> Feed-forward network với features đã tính sẵn.
+                    Đơn giản nhất trong nhóm DL.</li>
+                </ul>
+                <h4>Cảnh báo:</h4>
+                <p>Deep Learning trong finance rất dễ <strong>overfit</strong>. Dữ liệu tài chính có
+                signal-to-noise ratio cực thấp. Nếu model cho Sharpe > 3 trên in-sample,
+                gần như chắc chắn đã overfit.</p>
+            </div>
+        </details>
+
+        <hr>
+
+        <!-- ===== META ALPHA ===== -->
+        <h3>Bước 5: Combine Alphas bằng ML — Meta Alpha</h3>
+
+        <p>Đây là bước <strong>quan trọng nhất</strong> và cũng là nơi ML phát huy sức mạnh lớn nhất.
+        Ý tưởng: mỗi alpha đơn lẻ có điểm yếu riêng, nhưng khi kết hợp đúng cách,
+        chúng bù trừ nhau → <strong>Sharpe tổng cao hơn nhiều</strong>.</p>
+
+        <div class="formula-box">
+<span class="comment"># ====== COMBINE ALPHAS → META ALPHA ======</span>
+<span class="keyword">from</span> sklearn.linear_model <span class="keyword">import</span> Ridge
+
+<span class="comment"># Giả sử bạn đã có 10 alpha signals cho mỗi ngày, mỗi cổ phiếu</span>
+alpha_columns = [<span class="var">'alpha_reversal_5d', 'alpha_momentum_20d',
+                  'alpha_volume_spike', 'alpha_lgbm_v1',
+                  'alpha_lgbm_v2', 'alpha_rsi', 'alpha_volatility',
+                  'alpha_macd', 'alpha_sector_relative', 'alpha_calendar'</span>]
+
+<span class="comment"># Phương pháp 1: Equal Weight (đơn giản nhất)</span>
+df[<span class="var">'meta_equal'</span>] = df[alpha_columns].mean(axis=1)
+
+<span class="comment"># Phương pháp 2: ML-based Weight (dùng Ridge Regression)</span>
+<span class="comment"># Train trên data cũ, predict trên data mới</span>
+meta_model = Ridge(alpha=1.0)
+meta_model.fit(train[alpha_columns], train[<span class="var">'target'</span>])
+df[<span class="var">'meta_ml'</span>] = meta_model.predict(df[alpha_columns])
+
+<span class="comment"># Phương pháp 3: Inverse Volatility Weighting</span>
+<span class="comment"># Các alpha ổn định (low vol) được weight cao hơn</span>
+alpha_vols = df[alpha_columns].std()
+weights = (1 / alpha_vols) / (1 / alpha_vols).sum()
+df[<span class="var">'meta_ivol'</span>] = (df[alpha_columns] * weights).sum(axis=1)
+
+<span class="comment"># → Demean kết quả cuối cùng</span>
+df[<span class="var">'final_alpha'</span>] = df.groupby('date')[<span class="var">'meta_ml'</span>].transform(
+    <span class="keyword">lambda</span> x: x - x.mean()
+)
+        </div>
+
+        <hr>
+
+        <!-- ===== AVOIDING OVERFITTING ===== -->
+        <h3>⚠️ Tránh Overfitting — Vấn đề lớn nhất của ML trong Finance</h3>
+
+        <div class="card danger">
+            <div class="card-title">Tại sao overfitting đặc biệt nguy hiểm trong finance?</div>
+            <p>
+                Dữ liệu tài chính có <strong>signal-to-noise ratio rất thấp</strong>. Nghĩa là:
+                phần lớn biến động giá là <em>noise</em> (ngẫu nhiên), chỉ có một phần rất nhỏ là
+                <em>signal</em> (pattern thật sự lặp lại). ML model cực kỳ giỏi trong việc "nhớ" noise
+                và hiện tượng này gọi là overfitting.
+            </p>
+        </div>
+
+        <div class="glossary-grid">
+            <div class="glossary-item">
+                <div class="term">✅ Kỹ thuật chống Overfitting</div>
+                <div class="def">
+                    <ul>
+                        <li><strong>TimeSeriesSplit</strong> — Cross-validation theo thời gian, KHÔNG random</li>
+                        <li><strong>Regularization</strong> — L1 (Lasso), L2 (Ridge), hoặc cả hai (ElasticNet)</li>
+                        <li><strong>Early Stopping</strong> — Dừng train khi validation loss ngừng giảm</li>
+                        <li><strong>Feature Selection</strong> — Chỉ giữ features thực sự có ý nghĩa</li>
+                        <li><strong>Purged CV</strong> — Loại bỏ data gần test set để tránh leakage</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="glossary-item">
+                <div class="term">❌ Dấu hiệu Overfitting</div>
+                <div class="def">
+                    <ul>
+                        <li>In-sample Sharpe > 3.0 (quá đẹp để là thật)</li>
+                        <li>Performance tụt mạnh khi thay đổi nhẹ parameters</li>
+                        <li>Model dùng quá nhiều features (>100) mà không có lý do</li>
+                        <li>Train/validation performance chênh lệch quá lớn</li>
+                        <li>Kết quả thay đổi nhiều khi thêm/bớt vài ngày data</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- ===== RECOMMENDED LIBRARIES ===== -->
+        <h3>🛠️ Thư viện ML gợi ý cho đồ án</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Thư viện</th>
+                    <th>Mục đích</th>
+                    <th>Cài đặt</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>scikit-learn</code></td>
+                    <td>Linear models (Ridge, Lasso), Random Forest, preprocessing, metrics, cross-validation</td>
+                    <td><code>pip install scikit-learn</code></td>
+                </tr>
+                <tr>
+                    <td><code>lightgbm</code></td>
+                    <td>LightGBM — Gradient Boosting nhanh, mạnh, hỗ trợ ranking</td>
+                    <td><code>pip install lightgbm</code></td>
+                </tr>
+                <tr>
+                    <td><code>xgboost</code></td>
+                    <td>XGBoost — Gradient Boosting kinh điển, rất phổ biến trong Kaggle & quant</td>
+                    <td><code>pip install xgboost</code></td>
+                </tr>
+                <tr>
+                    <td><code>optuna</code></td>
+                    <td>Hyperparameter tuning tự động (Bayesian optimization)</td>
+                    <td><code>pip install optuna</code></td>
+                </tr>
+                <tr>
+                    <td><code>pytorch</code></td>
+                    <td>Deep Learning (LSTM, Transformer) — chỉ cần nếu đi hướng DL</td>
+                    <td><code>pip install torch</code></td>
+                </tr>
+                <tr>
+                    <td><code>shap</code></td>
+                    <td>Giải thích model — feature importance, model interpretability</td>
+                    <td><code>pip install shap</code></td>
+                </tr>
+                <tr>
+                    <td><code>ta</code></td>
+                    <td>Technical Analysis — tính toán 100+ indicators tự động (RSI, MACD, Bollinger, ...)</td>
+                    <td><code>pip install ta</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <hr>
+
+        <!-- ===== OVERALL STRATEGY ===== -->
+        <h3>🗺️ Chiến lược tổng thể cho sinh viên AI</h3>
+
+        <div class="card success">
+            <div class="card-title">Lộ trình gợi ý: 4 giai đoạn</div>
+            <div class="timeline">
+                <div class="timeline-item">
+                    <div class="tl-title">Giai đoạn 1: Baseline (Tuần 1-2)</div>
+                    <div class="tl-desc">
+                        Implement alpha truyền thống (5-day reversal) + backtesting framework.
+                        Hiểu rõ pipeline từ data → alpha → PnL → Sharpe.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="tl-title">Giai đoạn 2: ML Alpha đầu tiên (Tuần 3-4)</div>
+                    <div class="tl-desc">
+                        Feature engineering (30-50 features) + train Ridge/LightGBM.
+                        So sánh Sharpe của ML alpha vs. baseline alpha truyền thống.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="tl-title">Giai đoạn 3: Đa dạng hóa Alpha (Tuần 5-7)</div>
+                    <div class="tl-desc">
+                        Tạo thêm 5-8 alpha (cả truyền thống lẫn ML). Thử các feature sets khác nhau,
+                        các lookback periods khác nhau, các models khác nhau.
+                    </div>
+                </div>
+                <div class="timeline-item">
+                    <div class="tl-title">Giai đoạn 4: Meta Alpha & Hoàn thiện (Tuần 8-10)</div>
+                    <div class="tl-desc">
+                        Combine tất cả alpha bằng ML (meta model).
+                        Optimize, validate, chạy out-of-sample 1 lần. Viết báo cáo.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 14: WORLDQUANT ===================== -->
+    <section id="worldquant">
+        <h2><em class="icon">🏆</em> WorldQuant IQC — Cuộc thi liên quan</h2>
+
+        <div class="card highlight">
+            <div class="card-title">WorldQuant International Quant Championship (IQC)</div>
+            <p>
+                <strong>WorldQuant</strong> là một trong những quỹ quant lớn nhất thế giới, quản lý hàng tỷ USD.
+                Họ tổ chức cuộc thi <strong>IQC (International Quant Championship)</strong> cho sinh viên toàn cầu,
+                bao gồm Việt Nam.
+            </p>
+            <p>
+                Kiến thức bạn học và áp dụng trong đồ án này <strong>chính là kiến thức cần thiết để thi IQC</strong>:
+            </p>
+            <ul>
+                <li>Xây dựng alpha signals từ market data</li>
+                <li>Backtest và đánh giá hiệu quả</li>
+                <li>Tối ưu Sharpe ratio</li>
+                <li>Kết hợp nhiều alphas</li>
+            </ul>
+            <p>
+                <strong>Thành tích cao có giải thưởng!</strong>
+            </p>
+            <p>
+                🔗 <a href="https://www.worldquant.com/brain/iqc/" target="_blank"><strong>WorldQuant IQC — Trang chính thức</strong></a>
+            </p>
+        </div>
+
+        <div class="card">
+            <div class="card-title" style="color:#60a5fa;">WorldQuant BRAIN Platform</div>
+            <p>
+                WorldQuant cung cấp nền tảng <strong>BRAIN</strong> — cho phép bạn viết, backtest,
+                và submit alpha trực tuyến miễn phí. Đây là công cụ tuyệt vời để thực hành
+                bên cạnh đồ án.
+            </p>
+            <p>
+                Trên BRAIN, bạn viết alpha bằng công thức đơn giản (VD: <code>-ts_delta(close, 5)</code>
+                cho 5-day reversal) và nền tảng tự động backtest, hiển thị Sharpe, return, drawdown, v.v.
+            </p>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 15: ROADMAP ===================== -->
+    <section id="roadmap">
+        <h2><em class="icon">🗺️</em> Lộ trình thực hiện gợi ý</h2>
+
+        <div class="timeline">
+            <div class="timeline-item">
+                <div class="tl-title">Phase 1: Chuẩn bị dữ liệu (2-3 tuần)</div>
+                <div class="tl-desc">
+                    <ul>
+                        <li>Tạo point-in-time Russell 1000 universe cho mỗi năm</li>
+                        <li>Download dữ liệu giá hàng ngày từ Yahoo Finance (dùng <code>yfinance</code>)</li>
+                        <li>Xử lý missing data, corporate actions, stock splits</li>
+                        <li>Chia in-sample (trước 01/01/2024) & out-of-sample (sau 01/01/2024)</li>
+                        <li>Lưu out-of-sample riêng, <strong>KHÔNG ĐƯỢC MỞ XEM</strong></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="tl-title">Phase 2: Xây dựng Alpha đầu tiên (1-2 tuần)</div>
+                <div class="tl-desc">
+                    <ul>
+                        <li>Implement 5-day reversal alpha theo công thức của thầy</li>
+                        <li>Xây dựng backtesting framework: tính positions, PnL, return, Sharpe</li>
+                        <li>Vẽ equity curve (đường PnL tích lũy)</li>
+                        <li>Kiểm tra kết quả có hợp lý không (sanity check)</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="tl-title">Phase 3: Nghiên cứu & tạo thêm Alpha (3-4 tuần)</div>
+                <div class="tl-desc">
+                    <ul>
+                        <li>Nghiên cứu các loại alpha khác: momentum, volume, volatility, v.v.</li>
+                        <li>Implement và backtest từng alpha</li>
+                        <li>Đánh giá correlation giữa các alpha (alpha tốt phải ít tương quan với nhau)</li>
+                        <li>Mục tiêu: ~10 alpha có Sharpe > 0.5</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="tl-title">Phase 4: Kết hợp Alpha & Tối ưu (2-3 tuần)</div>
+                <div class="tl-desc">
+                    <ul>
+                        <li>Combine nhiều alpha thành meta alpha</li>
+                        <li>Thử các phương pháp: equal weight, optimized weight, ML-based</li>
+                        <li>Tối ưu Sharpe ratio trên in-sample data</li>
+                        <li>Cross-validation để tránh overfitting</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="timeline-item">
+                <div class="tl-title">Phase 5: Kiểm tra & Báo cáo (1-2 tuần)</div>
+                <div class="tl-desc">
+                    <ul>
+                        <li>Chạy chiến lược cuối cùng trên out-of-sample data (chỉ 1 lần!)</li>
+                        <li>So sánh kết quả in-sample vs out-of-sample</li>
+                        <li>Viết báo cáo, trình bày kết quả</li>
+                        <li>(Bonus) Submit alphas lên WorldQuant BRAIN để thi IQC</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <hr>
+
+    <!-- ===================== PHẦN 16: TÀI LIỆU ===================== -->
+    <section id="tai-lieu">
+        <h2><em class="icon">📚</em> Tài liệu tham khảo</h2>
+
+        <h3>Tài liệu từ thầy</h3>
+        <table>
+            <tbody>
+                <tr>
+                    <td>📄 <strong>Rusell.md</strong></td>
+                    <td>Hướng dẫn tạo point-in-time Russell 1000 universe</td>
+                    <td>Trong thư mục <code>Lecture Resource/</code></td>
+                </tr>
+                <tr>
+                    <td>📄 <strong>Research_Directions.pdf</strong></td>
+                    <td>Các hướng nghiên cứu cho đồ án</td>
+                    <td>Trong thư mục <code>Lecture Resource/</code></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Nguồn dữ liệu</h3>
+        <table>
+            <tbody>
+                <tr>
+                    <td>🌐 <a href="https://finance.yahoo.com" target="_blank">Yahoo Finance</a></td>
+                    <td>Dữ liệu giá cổ phiếu miễn phí</td>
+                </tr>
+                <tr>
+                    <td>🐍 <a href="https://pypi.org/project/yfinance/" target="_blank">yfinance (Python)</a></td>
+                    <td>Thư viện Python để download dữ liệu Yahoo Finance</td>
+                </tr>
+                <tr>
+                    <td>📊 <a href="https://www.ishares.com/us/products/239707/ishares-russell-1000-etf" target="_blank">iShares IWB ETF</a></td>
+                    <td>Download Russell 1000 holdings hiện tại</td>
+                </tr>
+                <tr>
+                    <td>📊 <a href="https://advisors.vanguard.com/investments/products/vone/vanguard-russell-1000-etf" target="_blank">Vanguard VONE ETF</a></td>
+                    <td>Download Russell 1000 holdings hiện tại (full replication)</td>
+                </tr>
+                <tr>
+                    <td>🏛️ <a href="https://www.lseg.com/en/ftse-russell/russell-reconstitution" target="_blank">FTSE Russell Reconstitution</a></td>
+                    <td>Thông tin reconstitution hàng năm (additions/deletions)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Cuộc thi & Nền tảng</h3>
+        <table>
+            <tbody>
+                <tr>
+                    <td>🏆 <a href="https://www.worldquant.com/brain/iqc/" target="_blank">WorldQuant IQC</a></td>
+                    <td>International Quant Championship — cuộc thi cho sinh viên</td>
+                </tr>
+                <tr>
+                    <td>🧠 <a href="https://platform.worldquant.com" target="_blank">WorldQuant BRAIN</a></td>
+                    <td>Nền tảng viết và backtest alpha miễn phí</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Thư viện Python gợi ý</h3>
+        <table>
+            <thead>
+                <tr><th>Thư viện</th><th>Mục đích</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>yfinance</code></td><td>Download dữ liệu giá từ Yahoo Finance</td></tr>
+                <tr><td><code>pandas</code></td><td>Xử lý dữ liệu dạng bảng (DataFrame)</td></tr>
+                <tr><td><code>numpy</code></td><td>Tính toán số học, ma trận</td></tr>
+                <tr><td><code>matplotlib</code> / <code>plotly</code></td><td>Vẽ biểu đồ (equity curve, v.v.)</td></tr>
+                <tr><td><code>scipy</code></td><td>Tối ưu hóa, thống kê</td></tr>
+                <tr><td><code>scikit-learn</code></td><td>Machine Learning (nếu dùng ML-based alpha)</td></tr>
+            </tbody>
+        </table>
+    </section>
+
+    <hr>
+
+    <!-- ===================== TÓM TẮT CUỐI ===================== -->
+    <section>
+        <h2 style="text-align:center; border:none; padding-bottom:0;">Tóm tắt toàn bộ đồ án trong 1 sơ đồ</h2>
+
+        <div class="card" style="text-align:center; background: rgba(0,0,0,0.3); border: 1px solid rgba(167,139,250,0.2); margin-top:20px;">
+            <div style="display:inline-block; text-align:left; font-family: 'Cascadia Code', monospace; font-size:0.85rem; line-height:2; color:#c0c0c0;">
+<pre style="margin:0; white-space:pre; overflow-x:auto; color:#c0c0c0;">
+┌─────────────────────────────────────────────────────────────────┐
+│                     📊 TỔNG QUAN ĐỒ ÁN                        │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  <span style="color:#a78bfa;">INPUT</span>                                                          │
+│  ├── Market: US (NYSE, NASDAQ)                                  │
+│  ├── Universe: Russell 1000 (~1000 stocks)                      │
+│  ├── Data: Yahoo Finance (≥10 năm)                              │
+│  └── Split: In-Sample (< 2024) | Out-Sample (≥ 2024) 🔒        │
+│                                                                 │
+│  <span style="color:#60a5fa;">PROCESS</span>                                                        │
+│  ├── 1. Thu thập & xử lý dữ liệu                               │
+│  ├── 2. Xây dựng Alpha signals (VD: 5-day reversal)             │
+│  ├── 3. Demean → Long-Short Balanced (Σα = 0)                   │
+│  ├── 4. Backtest trên In-Sample data                            │
+│  ├── 5. Xây dựng nhiều Alpha → Combine → Meta Alpha             │
+│  └── 6. Kiểm tra trên Out-of-Sample (1 lần duy nhất)           │
+│                                                                 │
+│  <span style="color:#34d399;">OUTPUT</span>                                                         │
+│  ├── Daily position vector: [α₁, α₂, ..., αₙ]                  │
+│  ├── Annualized Return (%)                                      │
+│  ├── Sharpe Ratio (target > 1.0)                                │
+│  └── Equity Curve (PnL tích lũy)                                │
+│                                                                 │
+│  <span style="color:#f59e0b;">BONUS</span>                                                          │
+│  └── Submit alphas → WorldQuant IQC 🏆                          │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+</pre>
+            </div>
+        </div>
+    </section>
+
+    <!-- FOOTER -->
+    <div style="text-align:center; padding:40px 0 0; color:#4b5563; font-size:0.8rem;">
+        <p>CO3101 — Đồ án tổng hợp — Trí Tuệ Nhân Tạo | HK1 2026-2027</p>
+        <p>Generated on September 23, 2026</p>
+    </div>
+</div>
+
+<!-- Scroll to Top Button -->
+<button class="scroll-top" id="scrollTop" onclick="window.scrollTo({top:0, behavior:'smooth'})">↑</button>
+
+<script>
+    // Scroll to top button visibility
+    window.addEventListener('scroll', () => {
+        const btn = document.getElementById('scrollTop');
+        if (window.scrollY > 400) {
+            btn.style.display = 'flex';
+        } else {
+            btn.style.display = 'none';
+        }
+    });
+
+    // Smooth scroll for sidebar links
+    document.querySelectorAll('.sidebar a').forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetId = link.getAttribute('href').substring(1);
+            const target = document.getElementById(targetId);
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        });
+    });
+
+    // Active sidebar link tracking
+    const sections = document.querySelectorAll('section[id], .hero[id]');
+    const navLinks = document.querySelectorAll('.sidebar a');
+
+    window.addEventListener('scroll', () => {
+        let current = '';
+        sections.forEach(section => {
+            const sectionTop = section.offsetTop;
+            if (window.scrollY >= sectionTop - 100) {
+                current = section.getAttribute('id');
+            }
+        });
+        navLinks.forEach(link => {
+            link.style.background = '';
+            link.style.color = '#c0c0c0';
+            if (link.getAttribute('href') === '#' + current) {
+                link.style.background = 'rgba(167, 139, 250, 0.15)';
+                link.style.color = '#a78bfa';
+            }
+        });
+    });
+</script>
+
+</body>
+</html>
