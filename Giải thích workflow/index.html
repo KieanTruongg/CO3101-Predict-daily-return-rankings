@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Giải thích chi tiết Workflow & Codebase — CO3101 Alpha Pipeline</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap');
+
+        :root {
+            --primary: #a78bfa;
+            --primary-dark: #8b5cf6;
+            --secondary: #60a5fa;
+            --success: #34d399;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-color: #0d1117;
+            --bg-card: rgba(22, 27, 34, 0.85);
+            --bg-card-hover: rgba(30, 41, 59, 0.95);
+            --text-main: #f0f6fc;
+            --text-muted: #8b949e;
+            --border: rgba(255, 255, 255, 0.1);
+            --code-bg: #161b22;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; font-size: 16px; }
+        body {
+            font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
+            background: linear-gradient(135deg, #090d16 0%, #111827 50%, #1e1b4b 100%);
+            color: var(--text-main);
+            line-height: 1.8;
+            min-height: 100vh;
+            display: flex;
+            background-attachment: fixed;
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 320px;
+            background: rgba(13, 17, 23, 0.95);
+            backdrop-filter: blur(16px);
+            border-right: 1px solid var(--border);
+            height: 100vh;
+            position: fixed;
+            top: 0; left: 0;
+            overflow-y: auto;
+            padding: 28px 16px;
+            z-index: 100;
+        }
+        .sidebar .brand {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .sidebar h4 {
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 20px 0 8px 12px;
+        }
+        .sidebar a {
+            display: block;
+            color: #c9d1d9;
+            text-decoration: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            transition: all 0.2s ease;
+            margin-bottom: 3px;
+        }
+        .sidebar a:hover {
+            background: rgba(167, 139, 250, 0.15);
+            color: var(--primary);
+            transform: translateX(4px);
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main {
+            margin-left: 320px;
+            padding: 48px 60px 120px;
+            max-width: 1200px;
+            width: calc(100% - 320px);
+        }
+
+        /* ===== HERO ===== */
+        .hero {
+            padding: 40px 0 32px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 48px;
+        }
+        .hero h1 {
+            font-size: 2.4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #c4b5fd, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 16px;
+            line-height: 1.25;
+        }
+        .hero p {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            max-width: 850px;
+        }
+
+        /* ===== SECTION STYLING ===== */
+        section {
+            margin-bottom: 64px;
+        }
+        section h2 {
+            font-size: 1.7rem;
+            color: #c4b5fd;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid rgba(167, 139, 250, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        section h3 {
+            font-size: 1.25rem;
+            color: var(--secondary);
+            margin: 28px 0 14px;
+        }
+        section h4 {
+            font-size: 1.05rem;
+            color: var(--success);
+            margin: 20px 0 8px;
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px 28px;
+            margin: 18px 0;
+            backdrop-filter: blur(8px);
+        }
+        .card.highlight { border-left: 4px solid var(--primary); background: rgba(167, 139, 250, 0.07); }
+        .card.success { border-left: 4px solid var(--success); background: rgba(52, 211, 153, 0.07); }
+        .card.warn { border-left: 4px solid var(--warning); background: rgba(245, 158, 11, 0.07); }
+        .card.danger { border-left: 4px solid var(--danger); background: rgba(239, 68, 68, 0.07); }
+        .card-title {
+            font-weight: 700;
+            font-size: 1.05rem;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+
+        /* ===== CODE ANNOTATION BOXES ===== */
+        .code-box {
+            background: var(--code-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin: 20px 0;
+            overflow: hidden;
+            font-family: 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.88rem;
+        }
+        .code-header {
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid var(--border);
+            padding: 10px 18px;
+            display: flex;
+            justify-content: space-between;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .code-content {
+            padding: 18px;
+            overflow-x: auto;
+            line-height: 1.7;
+        }
+        .line-comment { color: #8b949e; font-style: italic; }
+        .kw { color: #ff7b72; font-weight: 600; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .var { color: #79c0ff; }
+        .num { color: #7ee787; }
+        .dec { color: #ffa657; }
+
+        /* ===== ANNOTATION TABLE ===== */
+        .table-explain {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0 28px;
+            font-size: 0.92rem;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .table-explain th {
+            background: rgba(167, 139, 250, 0.12);
+            color: var(--primary);
+            text-align: left;
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+        .table-explain td {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            color: #c9d1d9;
+            vertical-align: top;
+        }
+        .table-explain tr:hover td { background: rgba(255, 255, 255, 0.02); }
+        .code-snippet {
+            font-family: 'Fira Code', monospace;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #f0883e;
+            font-size: 0.86rem;
+        }
+
+        /* ===== ACCORDION ===== */
+        details {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 14px;
+            transition: all 0.2s ease;
+        }
+        details[open] { border-color: rgba(167, 139, 250, 0.4); background: rgba(255, 255, 255, 0.05); }
+        summary {
+            padding: 14px 20px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #e0e7ff;
+            list-style: none;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        summary::after {
+            content: '▼';
+            font-size: 0.75rem;
+            color: var(--primary);
+            transition: transform 0.2s;
+        }
+        details[open] summary::after { transform: rotate(180deg); }
+        .details-body {
+            padding: 0 20px 20px;
+            color: #c9d1d9;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* ===== BADGE ===== */
+        .badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge.blue { background: rgba(96, 165, 250, 0.2); color: #60a5fa; border: 1px solid rgba(96, 165, 250, 0.3); }
+        .badge.purple { background: rgba(167, 139, 250, 0.2); color: #c4b5fd; border: 1px solid rgba(167, 139, 250, 0.3); }
+        .badge.green { background: rgba(52, 211, 153, 0.2); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+
+        /* ===== STEP BOXES ===== */
+        .step-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin: 20px 0;
+        }
+        .step-item {
+            display: flex;
+            gap: 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border);
+            padding: 18px 20px;
+            border-radius: 10px;
+        }
+        .step-num {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: #000;
+            font-weight: 800;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .step-text h4 { margin: 0 0 6px 0; color: #fff; }
+        .step-text p { color: var(--text-muted); font-size: 0.92rem; margin: 0; }
+    </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+    <div class="brand">📘 GIẢI THÍCH WORKFLOW</div>
+
+    <h4>1. Kiến trúc tổng quan</h4>
+    <a href="#why-split">🧩 Tại sao chia thành các file?</a>
+    <a href="#data-flow">🌊 Luồng dữ liệu giữa các Phase</a>
+
+    <h4>2. Chi tiết từng File</h4>
+    <a href="#config-explain">⚙️ File 1: config.py</a>
+    <a href="#utils-explain">🛠️ File 2: utils.py</a>
+    <a href="#phase1-explain">📦 Phase 1: Data Pipeline</a>
+    <a href="#phase2-explain">🧬 Phase 2: Feature Store</a>
+    <a href="#phase3a-explain">🤖 Phase 3a: XGBoost</a>
+    <a href="#phase3b-explain">🎯 Phase 3b: LambdaMART</a>
+    <a href="#phase3c-explain">🧠 Phase 3c: LSTM</a>
+    <a href="#phase4-explain">🔗 Phase 4: Ensemble</a>
+    <a href="#phase5-explain">📈 Phase 5: Backtest</a>
+
+    <h4>3. Hướng dẫn thực thi</h4>
+    <a href="#how-to-run">🚀 Hướng dẫn chạy từng bước</a>
+</nav>
+
+<!-- MAIN -->
+<div class="main">
+
+    <!-- HERO -->
+    <div class="hero">
+        <h1>Giải Thích Chi Tiết Workflow & Codebase</h1>
+        <p>
+            Cẩm nang toàn diện dành cho sinh viên AI: Phân tích kiến trúc thiết kế, mổ xẻ mục đích từng biến,
+            giải thích từng dòng code logic cốt lõi và hướng dẫn làm chủ pipeline lượng tử (Quantitative Alpha Pipeline).
+        </p>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 1: TẠI SAO PHẢI CHIA FILE? -->
+    <!-- ========================================== -->
+    <section id="why-split">
+        <h2><span class="badge purple">PHẦN 1</span> Tại sao lại chia các file thành từng Phase như vậy?</h2>
+
+        <div class="card highlight">
+            <div class="card-title">Vấn đề của "Một file chạy hết từ đầu đến cuối" (Monolithic Script)</div>
+            <p>
+                Ban đầu, nếu ta viết tất cả vào 1 file duy nhất (như <code>alpha_pipeline.py</code> cũ dài ~900 dòng):
+                Khi bạn muốn thử nghiệm một tính năng nhỏ ở model XGBoost, mỗi lần bạn ấn Run, chương trình sẽ phải 
+                <strong>tải lại từ Yahoo Finance (mất 5 phút)</strong>, <strong>tính toán lại 50 features (mất 2 phút)</strong>, 
+                rồi mới bắt đầu train. Nếu có lỗi nhỏ ở dòng cuối cùng, bạn mất trắng 10 phút chờ đợi và phải chạy lại từ con số 0!
+            </p>
+        </div>
+
+        <div class="step-container">
+            <div class="step-item">
+                <div class="step-num">1</div>
+                <div class="step-text">
+                    <h4>Tính độc lập & Tiết kiệm thời gian (Caching Intermediates)</h4>
+                    <p>
+                        Mỗi phase đọc dữ liệu từ thư mục và lưu kết quả ra đĩa (dạng <code>.parquet</code>). 
+                        Ví dụ: Phase 1 tải dữ liệu 1 lần và lưu lại. Khi bạn tinh chỉnh Phase 2 hoặc Phase 3 hàng chục lần, 
+                        bạn <strong>không cần tải lại mạng</strong> dù chỉ một byte!
+                    </p>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-num">2</div>
+                <div class="step-text">
+                    <h4>Bạn hoàn toàn làm chủ (Full Control & Debugging)</h4>
+                    <p>
+                        Thay vì máy tự chạy vù vù một lèo mà ta không kịp hiểu chuyện gì xảy ra, việc tách file cho phép bạn: 
+                        Chạy Phase 1 → Mở thư mục <code>data/processed/</code> xem dữ liệu đã sạch chưa → Hài lòng rồi mới gõ lệnh chạy Phase 2!
+                    </p>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-num">3</div>
+                <div class="step-text">
+                    <h4>Mở rộng dễ dàng (Scalability)</h4>
+                    <p>
+                        Sau này nếu thầy yêu cầu: <em>"Em hãy thêm Random Forest, CatBoost hoặc Transformer vào xem sao"</em>, 
+                        bạn chỉ việc tạo thêm file <code>phase3d_catboost.py</code> mà <strong>hoàn toàn không làm ảnh hưởng hay xáo trộn code cũ</strong>.
+                        Phase 4 (Ensemble) sẽ tự động nhận diện và gộp thêm model mới này vào!
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 2: LUỒNG DỮ LIỆU -->
+    <!-- ========================================== -->
+    <section id="data-flow">
+        <h2><span class="badge blue">PHẦN 2</span> Luồng dữ liệu qua các Phase (Data Flow)</h2>
+
+        <table class="table-explain">
+            <thead>
+                <tr>
+                    <th>Phase</th>
+                    <th>File thực thi</th>
+                    <th>Input (Đầu vào)</th>
+                    <th>Output (Đầu ra)</th>
+                    <th>Mục đích</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Phase 1</strong></td>
+                    <td><code>phase1_data_pipeline.py</code></td>
+                    <td>Yahoo Finance API</td>
+                    <td><code>data/processed/in_sample.parquet</code><br><code>data/processed/out_sample.parquet</code></td>
+                    <td>Tải và làm sạch dữ liệu, tách biệt In-sample và Out-of-sample.</td>
+                </tr>
+                <tr>
+                    <td><strong>Phase 2</strong></td>
+                    <td><code>phase2_feature_store.py</code></td>
+                    <td><code>in_sample.parquet</code></td>
+                    <td><code>data/features/in_sample_features.parquet</code></td>
+                    <td>Tạo 20+ features toán học/kỹ thuật và tạo biến target ngày mai.</td>
+                </tr>
+                <tr>
+                    <td><strong>Phase 3a</strong></td>
+                    <td><code>phase3a_xgboost.py</code></td>
+                    <td><code>in_sample_features.parquet</code></td>
+                    <td><code>alphas/alpha_xgboost.parquet</code><br><code>models/xgboost_model.json</code></td>
+                    <td>Train XGBoost dự đoán return ngày mai, lưu alpha prediction.</td>
+                </tr>
+                <tr>
+                    <td><strong>Phase 3b</strong></td>
+                    <td><code>phase3b_lambdamart.py</code></td>
+                    <td><code>in_sample_features.parquet</code></td>
+                    <td><code>alphas/alpha_lambdamart.parquet</code></td>
+                    <td>Train Learning-to-Rank (LightGBM) dự đoán thứ tự cổ phiếu.</td>
+                </tr>
+                <tr>
+                    <td><strong>Phase 3c</strong></td>
+                    <td><code>phase3c_lstm.py</code></td>
+                    <td><code>in_sample_features.parquet</code></td>
+                    <td><code>alphas/alpha_lstm.parquet</code></td>
+                    <td>Train mô hình Deep Learning LSTM nhận dạng chuỗi thời gian 20 ngày.</td>
+                </tr>
+                <tr>
+                    <td><strong>Phase 4</strong></td>
+                    <td><code>phase4_ensemble.py</code></td>
+                    <td>Các file trong thư mục <code>alphas/</code></td>
+                    <td><code>alphas/meta_alpha.parquet</code></td>
+                    <td>Tìm trọng số tối ưu gộp nhiều alpha lại thành 1 Meta Alpha.</td>
+                </tr>
+                <tr>
+                    <td><strong>Phase 5</strong></td>
+                    <td><code>phase5_backtest.py</code></td>
+                    <td><code>meta_alpha.parquet</code></td>
+                    <td><code>results/equity_curve_in_sample.png</code><br><code>results/backtest_in_sample.csv</code></td>
+                    <td>Demean vị thế, tính PnL tích lũy, Sharpe ratio, vẽ biểu đồ.</td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 3: MỔ XẺ CONFIG.PY -->
+    <!-- ========================================== -->
+    <section id="config-explain">
+        <h2><span class="badge green">FILE 1</span> Cấu hình là gì? Mổ xẻ chi tiết <code>config.py</code></h2>
+
+        <div class="card">
+            <div class="card-title">Cấu hình (Configuration) là gì và tại sao bắt buộc phải có?</div>
+            <p>
+                Trong kỹ thuật phần mềm, có một nguyên lý nổi tiếng gọi là <strong>Single Source of Truth (Điểm tin cậy duy nhất)</strong>.
+                Nếu bạn để ngày bắt đầu <code>"2014-01-01"</code> rải rác ở 8 file code khác nhau, đến khi thầy giáo bảo: 
+                <em>"Đổi lại lấy từ năm 2016 đi em"</em>, bạn sẽ phải mở từng file để tìm và sửa. Sơ suất quên 1 file là toàn bộ dữ liệu bị lệch và code crash!
+                <code>config.py</code> chính là nơi tập trung toàn bộ "bộ não điều khiển" của đồ án.
+            </p>
+        </div>
+
+        <div class="code-box">
+            <div class="code-header">Try to do/config.py</div>
+            <div class="code-content">
+<span class="kw">class</span> <span class="fn">Config</span>:
+    <span class="line-comment"># --- 1. Thiết lập thị trường & Vũ trụ cổ phiếu ---</span>
+    <span class="var">MARKET</span> = <span class="str">'US'</span>
+    <span class="var">UNIVERSE</span> = <span class="str">'Russell_1000'</span>
+
+    <span class="line-comment"># --- 2. Cột mốc thời gian ---</span>
+    <span class="var">DATA_START</span> = <span class="str">'2014-01-01'</span>        <span class="line-comment"># Lấy tối thiểu 10 năm dữ liệu theo lời thầy</span>
+    <span class="var">IN_SAMPLE_END</span> = <span class="str">'2023-12-31'</span>     <span class="line-comment"># Dữ liệu để huấn luyện và phát triển</span>
+    <span class="var">OUT_SAMPLE_START</span> = <span class="str">'2024-01-01'</span>  <span class="line-comment"># Khóa lại! Tuyệt đối không được đụng vào</span>
+    <span class="var">TRAIN_END</span> = <span class="str">'2022-06-30'</span>         <span class="line-comment"># Điểm cắt Train / Validation trong In-sample</span>
+
+    <span class="line-comment"># --- 3. Tự động liên kết thư mục ---</span>
+    <span class="var">DATA_DIR</span> = os.path.join(BASE_DIR, <span class="str">'data'</span>)
+    <span class="var">PROCESSED_DIR</span> = os.path.join(DATA_DIR, <span class="str">'processed'</span>)
+    <span class="var">FEATURES_DIR</span> = os.path.join(DATA_DIR, <span class="str">'features'</span>)
+    <span class="var">MODELS_DIR</span> = os.path.join(BASE_DIR, <span class="str">'models'</span>)
+    <span class="var">RESULTS_DIR</span> = os.path.join(BASE_DIR, <span class="str">'results'</span>)
+    <span class="var">ALPHAS_DIR</span> = os.path.join(BASE_DIR, <span class="str">'alphas'</span>)
+            </div>
+        </div>
+
+        <table class="table-explain">
+            <thead>
+                <tr>
+                    <th>Dòng / Biến</th>
+                    <th>Ý nghĩa chuyên sâu</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span class="code-snippet">BASE_DIR = os.path.dirname(os.path.abspath(__file__))</span></td>
+                    <td>
+                        Tự động tìm đường dẫn tuyệt đối đến thư mục chứa file code hiện tại. 
+                        Dù bạn đứng ở terminal ổ <code>C:</code>, ổ <code>D:</code> hay trên server Linux, code vẫn luôn định vị chính xác đường dẫn mà không bị lỗi <em>"FileNotFoundError"</em>.
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="code-snippet">OUT_SAMPLE_START = '2024-01-01'</span></td>
+                    <td>
+                        <strong>Quy tắc sống còn trong Quant:</strong> Dữ liệu từ 2024 đến nay mô phỏng tương lai. 
+                        Nếu ta để model nhìn thấy dữ liệu này dù chỉ 1 lần trong lúc chọn feature hay train, ta đã mắc lỗi <em>Data Snooping Bias (Ăn gian tương lai)</em>.
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="code-snippet">TRAIN_END = '2022-06-30'</span></td>
+                    <td>
+                        Trong tập In-sample (2014 - 2023), ta dùng đoạn từ 2014 đến giữa 2022 để <strong>Train</strong>, 
+                        và đoạn từ giữa 2022 đến hết 2023 để làm tập <strong>Validation</strong> (kiểm định hyperparameter).
+                    </td>
+                </tr>
+                <tr>
+                    <td><span class="code-snippet">Config.make_dirs()</span></td>
+                    <td>
+                        Hàm tự động quét và tạo các thư mục con (<code>data/raw</code>, <code>models/</code>, <code>alphas/</code>) ngay khi chương trình khởi chạy, giúp người dùng không cần phải tạo thư mục thủ công bằng tay.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 4: MỔ XẺ UTILS.PY -->
+    <!-- ========================================== -->
+    <section id="utils-explain">
+        <h2><span class="badge blue">FILE 2</span> Mổ xẻ file tiện ích <code>utils.py</code></h2>
+
+        <div class="card">
+            <div class="card-title">utils.py chứa những gì?</div>
+            <p>
+                Đây là "hộp đồ nghề" chung chứa các công thức toán học tài chính cốt lõi: 
+                hàm tính tỷ số <strong>Sharpe Ratio</strong>, hàm tính <strong>PnL</strong>, hàm <strong>Demean (Market Neutral)</strong>, 
+                và các hàm hỗ trợ đọc/ghi dữ liệu định dạng <code>.parquet</code> (nhanh gấp 5-10 lần so với CSV).
+            </p>
+        </div>
+
+        <details open>
+            <summary>📐 Hàm cốt lõi 1: Demean Alpha — Bí mật của Quỹ Market Neutral</summary>
+            <div class="details-body">
+                <div class="code-box">
+                    <div class="code-content">
+<span class="kw">def</span> <span class="fn">demean_alpha</span>(df: pd.DataFrame, alpha_col: str) -> pd.Series:
+    <span class="line-comment"># Nhóm theo từng ngày, lấy giá trị alpha trừ đi trung bình của ngày hôm đó</span>
+    <span class="kw">return</span> df.groupby(<span class="str">'date'</span>)[alpha_col].transform(<span class="kw">lambda</span> x: x - x.mean())
+                    </div>
+                </div>
+                <p>
+                    <strong>Tại sao phải làm như vậy?</strong> Giả sử hôm nay FED tăng lãi suất, toàn bộ 1000 cổ phiếu đều đỏ sàn (giảm điểm). 
+                    Nếu bạn giữ vị thế mua (Long), bạn sẽ lỗ thảm hại. Nhưng khi bạn <strong>Demean</strong>:
+                </p>
+                <ul>
+                    <li>Những cổ phiếu có điểm số cao hơn trung bình sẽ mang dấu <strong>dương (+)</strong> → Bạn MUA (Long).</li>
+                    <li>Những cổ phiếu có điểm số thấp hơn trung bình sẽ mang dấu <strong>âm (-)</strong> → Bạn BÁN KHỐNG (Short).</li>
+                    <li>Tổng tiền mua luôn bằng tổng tiền bán: <span class="code-snippet">Σ position = 0</span>. 
+                    Dù thị trường sập 500 điểm hay tăng 500 điểm, bạn hoàn toàn miễn nhiễm với biến động chung, chỉ ăn chênh lệch giữa cổ phiếu mạnh và cổ phiếu yếu!</li>
+                </ul>
+            </div>
+        </details>
+
+        <details>
+            <summary>📊 Hàm cốt lõi 2: calculate_metrics — Tính Sharpe Ratio & Max Drawdown</summary>
+            <div class="details-body">
+                <div class="code-box">
+                    <div class="code-content">
+<span class="line-comment"># 1. Annualized Return (Lợi nhuận hàng năm quy đổi)</span>
+n_years = len(daily_pnl) / <span class="num">252</span>  <span class="line-comment"># Một năm thị trường Mỹ có 252 ngày giao dịch</span>
+annualized_return = (<span class="num">1</span> + total_return) ** (<span class="num">1</span> / n_years) - <span class="num">1</span>
+
+<span class="line-comment"># 2. Sharpe Ratio (Thước đo vàng của Phố Wall)</span>
+sharpe = daily_pnl.mean() / daily_pnl.std() * np.sqrt(<span class="num">252</span>)
+                    </div>
+                </div>
+                <p>
+                    <code>daily_pnl.mean() / daily_pnl.std()</code> thể hiện: Với mỗi 1 đơn vị rủi ro (độ biến động) bạn gánh chịu, bạn đổi lại được bao nhiêu đơn vị lợi nhuận.
+                    Nhân với <code>np.sqrt(252)</code> để quy đổi từ mức ngày (daily) sang mức năm (annualized).
+                </p>
+            </div>
+        </details>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 5: PHASE 1 DATA PIPELINE -->
+    <!-- ========================================== -->
+    <section id="phase1-explain">
+        <h2><span class="badge purple">PHASE 1</span> Mổ xẻ <code>phase1_data_pipeline.py</code></h2>
+
+        <p>Phase này chịu trách nhiệm kéo dữ liệu giá lịch sử về máy và đóng gói thành tệp sạch sẽ.</p>
+
+        <div class="code-box">
+            <div class="code-header">Điểm nhấn trong code Phase 1</div>
+            <div class="code-content">
+df = yf.download(
+    ticker,
+    start=Config.DATA_START,
+    progress=<span class="kw">False</span>,
+    auto_adjust=<span class="kw">True</span>  <span class="line-comment"># 🔥 CỰC KỲ QUAN TRỌNG!</span>
+)
+            </div>
+        </div>
+
+        <div class="card warn">
+            <div class="card-title">Tại sao phải dùng auto_adjust=True?</div>
+            <p>
+                Trong lịch sử, cổ phiếu thường có hiện tượng <strong>Chia tách cổ phiếu (Stock Split)</strong> 
+                (ví dụ: Apple chia tách 4:1 năm 2020, giá từ $500 chia 4 còn $125). 
+                Nếu không dùng <code>auto_adjust=True</code>, trên biểu đồ hôm trước giá $500, hôm sau giá $125, 
+                model AI sẽ lầm tưởng cổ phiếu vừa phá sản sụt 75% giá trị, dẫn tới dự đoán hoàn toàn sai bét!
+            </p>
+        </div>
+
+        <div class="code-box">
+            <div class="code-content">
+<span class="line-comment"># Forward-fill missing values</span>
+combined = combined.groupby(<span class="str">'ticker'</span>, group_keys=<span class="kw">False</span>).apply(
+    <span class="kw">lambda</span> x: x.ffill()
+)
+            </div>
+        </div>
+        <p>
+            <code>ffill()</code> (Forward Fill): Nếu ngày thứ 4 sàn giao dịch mất kết nối mạng hoặc cổ phiếu bị tạm ngưng giao dịch (NaN), 
+            ta lấy giá đóng cửa của ngày thứ 3 điền vào ngày thứ 4. Tuyệt đối <strong>không dùng <code>bfill()</code></strong> (lấy giá ngày mai đắp vào hôm nay vì vi phạm look-ahead bias).
+        </p>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 6: PHASE 2 FEATURE STORE -->
+    <!-- ========================================== -->
+    <section id="phase2-explain">
+        <h2><span class="badge blue">PHASE 2</span> Mổ xẻ <code>phase2_feature_store.py</code></h2>
+
+        <p>Đây là trái tim của kỹ thuật <strong>Feature Engineering</strong>. Ta biến dữ liệu giá thô (OHLCV) thành 20+ chỉ số thống kê đặc trưng:</p>
+
+        <table class="table-explain">
+            <thead>
+                <tr>
+                    <th>Nhóm Feature</th>
+                    <th>Tên trong code</th>
+                    <th>Ý nghĩa kinh tế & toán học</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Price Returns</strong></td>
+                    <td><code>return_1d</code>, <code>return_5d</code>, <code>return_20d</code></td>
+                    <td>Lợi nhuận quá khứ 1 ngày, 5 ngày (chiến lược đảo chiều 5-day reversal), 20 ngày (chiến lược Momentum).</td>
+                </tr>
+                <tr>
+                    <td><strong>Trend / MA</strong></td>
+                    <td><code>close_to_sma_10</code>, <code>close_to_sma_50</code></td>
+                    <td>Khoảng cách phần trăm giữa giá hiện tại so với đường trung bình 50 ngày (đo xem cổ phiếu có đang bị mua quá đà hay không).</td>
+                </tr>
+                <tr>
+                    <td><strong>Technical</strong></td>
+                    <td><code>RSI_14</code>, <code>MACD</code>, <code>bb_position</code></td>
+                    <td>Chỉ báo RSI nhận diện vùng quá mua/quá bán; Bollinger Band đo vị thế giá nằm ở dải trên hay dưới.</td>
+                </tr>
+                <tr>
+                    <td><strong>Volatility</strong></td>
+                    <td><code>volatility_20d</code>, <code>vol_ratio</code></td>
+                    <td>Độ lệch chuẩn của lợi nhuận. Cổ phiếu rủi ro biến động cao thường có hành vi giá khác với cổ phiếu phòng thủ ổn định.</td>
+                </tr>
+                <tr>
+                    <td><strong>Cross-Sectional</strong></td>
+                    <td><code>return_1d_rank</code></td>
+                    <td>Xếp hạng percentile lợi nhuận của cổ phiếu đó so với 1000 cổ phiếu còn lại trong cùng một ngày.</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="code-box">
+            <div class="code-header">Biến Target: Điểm then chốt của bài toán</div>
+            <div class="code-content">
+df[<span class="str">'target_return_1d'</span>] = df.groupby(<span class="str">'ticker'</span>)[<span class="str">'Close'</span>].pct_change(<span class="num">1</span>).shift(-<span class="num">1</span>)
+            </div>
+        </div>
+        <p>
+            <code>shift(-1)</code> dịch chuyển ngược 1 bước về tương lai. Nghĩa là: Tại hàng của ngày hôm nay ($t$), 
+            cột <code>target_return_1d</code> sẽ chứa tỷ suất sinh lời của ngày mai ($t+1$). 
+            Mô hình AI sẽ học cách: <em>"Nhìn toàn bộ các features của ngày $t$ để dự đoán giá trị của cột Target ở ngày $t+1$"</em>.
+        </p>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 7: PHASE 3 CÁC MODEL AI -->
+    <!-- ========================================== -->
+    <section id="phase3a-explain">
+        <h2><span class="badge green">PHASE 3</span> Mổ xẻ 3 Mô Hình Học Máy (ML / DL)</h2>
+
+        <div class="card highlight">
+            <div class="card-title">So sánh 3 góc nhìn của 3 mô hình</div>
+            <p>
+                Để xây dựng một <strong>Meta Alpha</strong> đa dạng hóa tốt, ta không nên dùng các mô hình giống hệt nhau. 
+                Dự án thiết kế 3 trường phái AI khác nhau:
+            </p>
+            <ul>
+                <li><strong>Phase 3a (XGBoost):</strong> Mô hình cây quyết định (Tree-based) chuyên bắt các tương tác phi tuyến (Non-linear interactions).</li>
+                <li><strong>Phase 3b (LambdaMART):</strong> Học xếp hạng trực tiếp (Learning-to-Rank) — Không quan tâm giá tăng bao nhiêu %, chỉ cần biết cổ phiếu A sẽ xếp trên cổ phiếu B.</li>
+                <li><strong>Phase 3c (LSTM PyTorch):</strong> Mạng nơ-ron hồi quy chuỗi thời gian (Sequential Temporal Patterns) — Học sự biến chuyển liên tục trong 20 ngày gần nhất.</li>
+            </ul>
+        </div>
+
+        <details open>
+            <summary>🌲 Phase 3a: XGBoost và các tham số chống Overfit</summary>
+            <div class="details-body">
+                <div class="code-box">
+                    <div class="code-content">
+model = xgb.XGBRegressor(
+    n_estimators=<span class="num">500</span>,
+    max_depth=<span class="num">6</span>,            <span class="line-comment"># Không để quá sâu để tránh nhớ vẹt dữ liệu nhiễu</span>
+    learning_rate=<span class="num">0.01</span>,      <span class="line-comment"># Tốc độ học nhỏ giúp mô hình hội tụ từ từ và ổn định</span>
+    subsample=<span class="num">0.8</span>,          <span class="line-comment"># Mỗi cây chỉ lấy ngẫu nhiên 80% số dòng data</span>
+    colsample_bytree=<span class="num">0.8</span>,   <span class="line-comment"># Mỗi cây chỉ lấy ngẫu nhiên 80% số cột feature</span>
+    reg_alpha=<span class="num">0.1</span>,          <span class="line-comment"># L1 Regularization (triệt tiêu features vô dụng)</span>
+    reg_lambda=<span class="num">1.0</span>,         <span class="line-comment"># L2 Regularization (giảm biên độ trọng số)</span>
+    random_state=Config.RANDOM_SEED
+)
+                    </div>
+                </div>
+            </div>
+        </details>
+
+        <details id="phase3b-explain">
+            <summary>🎯 Phase 3b: LambdaMART — Thuật toán của Google Search ứng dụng vào Chứng khoán</summary>
+            <div class="details-body">
+                <p>
+                    Thông thường trong bài toán Regression, hàm mất mát là <strong>MSE (Mean Squared Error)</strong>. 
+                    Nhưng trong đầu tư, nếu cổ phiếu Apple tăng 10% mà ta đoán tăng 5%, MSE bị phạt nặng dù thực tế ta vẫn đoán đúng Apple là cổ phiếu tăng mạnh nhất!
+                </p>
+                <p>
+                    <strong>LambdaMART (LightGBM với <code>objective='lambdarank'</code>)</strong> tối ưu trực tiếp cho 
+                    <strong>NDCG</strong> hoặc <strong>Spearman Rank Correlation</strong>. 
+                    Code sử dụng tham số <code>group=train_groups</code> để thông báo cho mô hình biết: 
+                    <em>"Các dòng này thuộc cùng ngày $t$, hãy chỉ xếp hạng chúng trong ngày đó thôi, đừng so sánh ngày nắng với ngày mưa!"</em>.
+                </p>
+            </div>
+        </details>
+
+        <details id="phase3c-explain">
+            <summary>🧠 Phase 3c: LSTM PyTorch — Chuyển bảng số liệu thành dạng Tensor 3D</summary>
+            <div class="details-body">
+                <p>
+                    XGBoost nhìn mỗi ngày như một bức ảnh chụp tĩnh (Static snapshot). 
+                    Còn <strong>LSTM</strong> nhận đầu vào là tensor 3 chiều: <code>(batch_size, 20 ngày, 25 features)</code>.
+                    Nó giúp mô hình cảm nhận được "nhịp đập" và quán tính giá thay đổi qua 20 ngày giao dịch liên tiếp.
+                </p>
+            </div>
+        </details>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 8: PHASE 4 ENSEMBLE -->
+    <!-- ========================================== -->
+    <section id="phase4-explain">
+        <h2><span class="badge purple">PHASE 4</span> Mổ xẻ <code>phase4_ensemble.py</code> (Meta Alpha)</h2>
+
+        <div class="card success">
+            <div class="card-title">Cơ chế Auto-Discovery thông minh</div>
+            <p>
+                Code trong Phase 4 được thiết kế cực kỳ thông minh với hàm <code>discover_alphas()</code>: 
+                Nó tự quét thư mục <code>alphas/</code> xem bạn đã chạy những phase nào. 
+                Nếu bạn mới chạy <code>phase3a</code>, nó sẽ dùng 1 alpha để kiểm tra. 
+                Nếu bạn chạy thêm <code>phase3b</code> và <code>phase3c</code>, nó sẽ tự nhận diện 3 cột và tiến hành phối hợp (Combine)!
+            </p>
+        </div>
+
+        <div class="code-box">
+            <div class="code-header">3 phương pháp phối hợp Alphas</div>
+            <div class="code-content">
+<span class="line-comment"># Phương pháp 1: Equal Weight (Chia đều)</span>
+df[<span class="str">'meta_alpha'</span>] = df[alpha_cols].mean(axis=<span class="num">1</span>)
+
+<span class="line-comment"># Phương pháp 2: Inverse Volatility (Alpha nào ổn định hơn thì cấp vốn nhiều hơn)</span>
+vols = df[alpha_cols].std()
+w = (<span class="num">1</span> / vols) / (<span class="num">1</span> / vols).sum()
+df[<span class="str">'meta_alpha'</span>] = (df[alpha_cols] * w.values).sum(axis=<span class="num">1</span>)
+
+<span class="line-comment"># Phương pháp 3: Ridge Regression (Dùng ML tìm trọng số tối ưu bù trừ lẫn nhau)</span>
+model = Ridge(alpha=<span class="num">1.0</span>)
+model.fit(df.loc[train_mask, alpha_cols], df.loc[train_mask, <span class="str">'target_return_1d'</span>])
+df[<span class="str">'meta_alpha'</span>] = model.predict(df[alpha_cols])
+            </div>
+        </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 9: PHASE 5 BACKTEST -->
+    <!-- ========================================== -->
+    <section id="phase5-explain">
+        <h2><span class="badge blue">PHASE 5</span> Mổ xẻ <code>phase5_backtest.py</code></h2>
+
+        <p>Đây là vòng thẩm định cuối cùng để xuất ra báo cáo kết quả đồ án:</p>
+        <ul>
+            <li><strong>Chuyển đổi Alpha thành Vị thế:</strong> Dùng <code>demean_alpha()</code> để vị thế trung hòa thị trường.</li>
+            <li><strong>Tính toán chuỗi PnL:</strong> <span class="code-snippet">Daily PnL = Σ (Position_i × Return_i)</span>.</li>
+            <li><strong>Phân tích theo tháng (Monthly Breakdown):</strong> Thống kê bao nhiêu tháng lãi, bao nhiêu tháng lỗ, top tháng kiếm tiền nhiều nhất.</li>
+            <li><strong>Vẽ Equity Curve:</strong> Xuất file đồ thị hình ảnh vào thư mục <code>results/equity_curve_in_sample.png</code> gồm 2 khung: 
+            Khung trên là đường tăng trưởng vốn tích lũy, khung dưới là độ sụt giảm từ đỉnh (Drawdown).</li>
+        </ul>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- PHẦN 10: HƯỚNG DẪN THỰC THI -->
+    <!-- ========================================== -->
+    <section id="how-to-run">
+        <h2><span class="badge green">HƯỚNG DẪN</span> Cách Chạy Từng Bước Trên Máy Tính</h2>
+
+        <div class="card warn">
+            <div class="card-title">Mở Terminal (PowerShell hoặc CMD) và thao tác theo thứ tự sau:</div>
+        </div>
+
+        <div class="step-container">
+            <div class="step-item">
+                <div class="step-num">1</div>
+                <div class="step-text">
+                    <h4>Di chuyển vào thư mục code</h4>
+                    <div class="code-box">
+                        <div class="code-content">
+d:
+cd "D:\Learning\HK1_2026-2027\CO3101 - Đồ án tổng hợp - ttnt\Try to do"
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-num">2</div>
+                <div class="step-text">
+                    <h4>Chạy Phase 1 (Tải & xử lý data)</h4>
+                    <div class="code-box">
+                        <div class="code-content">python phase1_data_pipeline.py</div>
+                    </div>
+                    <p>Chương trình sẽ tải 20 mã cổ phiếu mẫu từ Yahoo Finance và lưu vào <code>data/processed/</code>.</p>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-num">3</div>
+                <div class="step-text">
+                    <h4>Chạy Phase 2 (Tạo features)</h4>
+                    <div class="code-box">
+                        <div class="code-content">python phase2_feature_store.py</div>
+                    </div>
+                    <p>Tính toán toàn bộ các cột chỉ báo kỹ thuật, volume, volatility và lưu vào <code>data/features/</code>.</p>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-num">4</div>
+                <div class="step-text">
+                    <h4>Chạy Phase 3a (Huấn luyện XGBoost)</h4>
+                    <div class="code-box">
+                        <div class="code-content">python phase3a_xgboost.py</div>
+                    </div>
+                    <p>Train XGBoost, in bảng Feature Importance và lưu alpha vào <code>alphas/alpha_xgboost.parquet</code>.</p>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-num">5</div>
+                <div class="step-text">
+                    <h4>Chạy Phase 4 (Gộp Alphas)</h4>
+                    <div class="code-box">
+                        <div class="code-content">python phase4_ensemble.py</div>
+                    </div>
+                    <p>Tự động nhận diện alpha vừa tạo và tính toán Meta Alpha.</p>
+                </div>
+            </div>
+
+            <div class="step-item">
+                <div class="step-num">6</div>
+                <div class="step-text">
+                    <h4>Chạy Phase 5 (Xem kết quả Backtest & Biểu đồ)</h4>
+                    <div class="code-box">
+                        <div class="code-content">python phase5_backtest.py</div>
+                    </div>
+                    <p>In bảng Sharpe Ratio, Win Rate và bật lên cửa sổ đồ thị tăng trưởng lợi nhuận!</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+</div>
+
+</body>
+</html>
