@@ -1,0 +1,43 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  code-quality-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 📥 Checkout code
+      uses: actions/checkout@v4
+
+    - name: 🐍 Set up Python 3.10
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.10"
+        cache: 'pip'
+
+    - name: 📦 Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: 🔍 Lint with flake8 (Syntax check)
+      run: |
+        # Dừng nếu có lỗi syntax Python hoặc undefined names
+        flake8 "Try to do" --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Cảnh báo các lỗi format thông thường nhưng không làm fail build
+        flake8 "Try to do" --count --exit-zero --max-complexity=10 --max-line-length=120 --statistics
+
+    - name: 🧪 Smoke Test (Import check)
+      run: |
+        # Kiểm tra xem các file module có thể import thành công mà không bị crash syntax
+        python -c "import sys; sys.path.append('Try to do'); import config, utils; print('✅ Config & Utils OK!')"
+        python -c "import sys; sys.path.append('Try to do'); import phase1_data_pipeline; print('✅ Phase 1 OK!')"
+        python -c "import sys; sys.path.append('Try to do'); import phase2_feature_store; print('✅ Phase 2 OK!')"
+        python -c "import sys; sys.path.append('Try to do'); import phase3a_xgboost; print('✅ Phase 3a OK!')"
+        python -c "import sys; sys.path.append('Try to do'); import phase4_ensemble; print('✅ Phase 4 OK!')"
+        python -c "import sys; sys.path.append('Try to do'); import phase5_backtest; print('✅ Phase 5 OK!')"
